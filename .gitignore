@@ -1,0 +1,4 @@
+/target
+.env
+.readme
+database/usuarios.sql

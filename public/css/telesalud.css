@@ -1,0 +1,100 @@
+/* /var/www/html/sigh_rust/public/css/telesalud.css */
+
+/* Backdrop oscuro del modal (z-index adecuado para no tapar alertas) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050; /* Reducido para permitir que SweetAlert se monte encima */
+}
+
+.modal-overlay.active {
+    display: flex !important;
+}
+
+/* Forzar que SweetAlert2 siempre quede por encima del modal */
+.swal2-container {
+    z-index: 20000 !important;
+}
+
+/* Caja de diálogo del modal */
+.modal-dialog {
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 36rem;
+    overflow: hidden;
+    border: 1px solid rgba(217, 119, 6, 0.3);
+    animation: modalSlide 0.2s ease-out;
+}
+
+@keyframes modalSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Header metálico lúcuma / oro */
+.modal-header-lucuma {
+    background: linear-gradient(135deg, #1c1300 0%, #291800 50%, #0d0800 100%);
+    color: #ffffff;
+    padding: 1.1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #b45309;
+}
+
+/* Botón estilo Lúcuma / Oro */
+.btn-lucuma {
+    background: linear-gradient(135deg, #b45309 0%, #d97706 50%, #78350f 100%);
+    color: #ffffff !important;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-lucuma:hover:not(:disabled) {
+    filter: brightness(1.2);
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.45);
+}
+
+.btn-lucuma:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+}
+
+/* Tarjeta preview de paciente */
+.preview-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+/* Botón buscar oscuro */
+.btn-dark {
+    background: #18181b;
+    color: #fbbf24;
+    border: 1px solid #3f3f46;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-dark:hover {
+    background: #000000;
+    color: #fef08a;
+}

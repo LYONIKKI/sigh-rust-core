@@ -1,0 +1,134 @@
+<!-- /var/www/html/sigh_rust/public/views/layout/sidebar.html -->
+<style>
+    /* Fondo principal del Sidebar con gradiente Lúcuma / Oro Oscuro */
+    .sidebar-bg-lucuma { 
+        background: linear-gradient(180deg, #1c1300 0%, #0f0a00 50%, #050300 100%) !important; 
+    }
+
+    /* Badges e insignias con acabado brillante metalizado */
+    .badge-lucuma-brillante {
+        background: linear-gradient(135deg, #b45309 0%, #f59e0b 35%, #fef08a 50%, #fbbf24 65%, #78350f 100%) !important;
+        border: 1px solid rgba(254, 240, 138, 0.9) !important;
+        box-shadow: 0 0 14px rgba(245, 158, 11, 0.5) !important;
+    }
+
+    /* Botón / Módulo Activo en tono Lúcuma Brillante */
+    .item-active-lucuma {
+        background: linear-gradient(90deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.1) 100%) !important;
+        border-left: 4px solid #fbbf24 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.15) !important;
+    }
+
+    /* Enlaces inactivos con texto blanco nítido */
+    .item-inactive-white {
+        color: #ffffff !important;
+        opacity: 0.85;
+    }
+
+    /* Efectos hover elegantes en blanco brillante */
+    .item-hover-lucuma:hover {
+        background-color: rgba(245, 158, 11, 0.15) !important;
+        color: #ffffff !important;
+        opacity: 1 !important;
+    }
+</style>
+
+<aside class="w-64 sidebar-bg-lucuma text-white flex flex-col min-h-screen border-r border-amber-900/40 select-none flex-shrink-0" style="min-width: 16rem; max-width: 16rem;">
+    
+    <!-- HEADER -->
+    <div class="p-4 bg-black/40 flex items-center border-b border-amber-900/40 backdrop-blur-sm">
+        <div class="badge-lucuma-brillante p-2.5 rounded-xl mr-3 flex-shrink-0 flex items-center justify-center">
+            <!-- Icono cambiado a un engranaje técnico avanzado representando el núcleo Rust -->
+            <i class="fa-solid fa-gears text-base text-stone-950 font-black"></i>
+        </div>
+        <div class="min-w-0">
+            <h2 class="text-white font-black text-xs tracking-wider leading-tight truncate">SIGH RUST</h2>
+            <p class="text-[9px] text-amber-400 font-extrabold tracking-widest uppercase mt-0.5">v 7.4</p>
+        </div>
+    </div>
+
+    <!-- NAVEGACIÓN DINÁMICA -->
+    <nav class="flex-1 p-3 space-y-2 overflow-y-auto font-mono text-xs">
+        
+        <!-- SECCIÓN 1: TELESALUD -->
+        <details id="acc-telesalud-resumen" class="sidebar-accordion group/acc [&_summary::-webkit-details-marker]:hidden" style="display: none;">
+            <summary class="flex items-center justify-between px-3 py-2 text-[11px] font-bold text-amber-400 uppercase tracking-wider cursor-pointer hover:text-amber-200 rounded-lg transition-colors">
+                <span>Módulo Telesalud</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 group-open/acc:rotate-180 text-amber-500"></i>
+            </summary>
+            <div class="mt-1 pl-1 space-y-1">
+                <!-- Panel Estadísticas Telesalud -->
+                <a href="/sigh_rust/public/views/dashboard.html" class="flex items-center px-3 py-2.5 rounded-lg text-xs transition duration-150 group item-active-lucuma">
+                    <span class="w-6 text-center flex-shrink-0"><i class="fa-solid fa-chart-pie text-amber-300"></i></span>
+                    <span class="truncate">Panel Estadísticas</span>
+                </a>
+                <!-- Gestión Lotes FUA -->
+                <a href="/sigh_rust/public/views/telesalud.html" class="flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition duration-150 group item-inactive-white item-hover-lucuma">
+                    <span class="w-6 text-center flex-shrink-0"><i class="fa-solid fa-file-pen text-amber-400"></i></span>
+                    <span class="truncate">Gestión y Lotes FUA</span>
+                </a>
+            </div>
+        </details>
+
+        <!-- SECCIÓN 2: INSUMOS DE LABORATORIO -->
+        <details id="acc-laboratorio-insumos" class="sidebar-accordion group/acc [&_summary::-webkit-details-marker]:hidden" style="display: none;">
+            <summary class="flex items-center justify-between px-3 py-2 text-[11px] font-bold text-amber-400 uppercase tracking-wider cursor-pointer hover:text-amber-200 rounded-lg transition-colors">
+                <span>Insumos Laboratorio</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 group-open/acc:rotate-180 text-amber-500"></i>
+            </summary>
+            <div class="mt-1 pl-1 space-y-1">
+                <!-- 1. Catálogo e Inventario General -->
+                <a href="/sigh_rust/public/views/insumos.html" class="flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition duration-150 group item-inactive-white item-hover-lucuma">
+                    <span class="w-6 text-center flex-shrink-0"><i class="fa-solid fa-boxes-stacked text-amber-400"></i></span>
+                    <span class="truncate">Inventario y Stock</span>
+                </a>
+                <!-- 2. Movimientos (Ingresos y Salidas estilo Banco de Sangre) -->
+                <a href="/sigh_rust/public/views/movimientos_lab.html" class="flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition duration-150 group item-inactive-white item-hover-lucuma">
+                    <span class="w-6 text-center flex-shrink-0"><i class="fa-solid fa-arrow-right-arrow-left text-amber-400"></i></span>
+                    <span class="truncate">Ingresos y Salidas</span>
+                </a>
+                <!-- 3. Directorio de Personal Receptor -->
+                <a href="/sigh_rust/public/views/personal_lab.html" class="flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition duration-150 group item-inactive-white item-hover-lucuma">
+                    <span class="w-6 text-center flex-shrink-0"><i class="fa-solid fa-address-book text-amber-400"></i></span>
+                    <span class="truncate">Personal Receptor</span>
+                </a>
+            </div>
+        </details>
+
+        <!-- SECCIÓN 3: ADMINISTRACIÓN (SÓLO ADMINS) -->
+        <details id="acc-telesalud-admin" class="sidebar-accordion group/acc [&_summary::-webkit-details-marker]:hidden" style="display: none;">
+            <summary class="flex items-center justify-between px-3 py-2 text-[11px] font-bold text-amber-400 uppercase tracking-wider cursor-pointer hover:text-amber-200 rounded-lg transition-colors">
+                <span>Administración</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 group-open/acc:rotate-180 text-amber-500"></i>
+            </summary>
+            <div class="mt-1 pl-1 space-y-1">
+                <a href="/sigh_rust/public/views/usuarios.html" class="flex items-center px-3 py-2.5 rounded-lg text-xs font-medium transition duration-150 group item-inactive-white item-hover-lucuma">
+                    <span class="w-6 text-center flex-shrink-0"><i class="fa-solid fa-users-gear text-amber-400"></i></span>
+                    <span class="truncate font-bold">Gestión de Usuarios</span>
+                </a>
+            </div>
+        </details>
+    </nav>
+
+    <!-- FOOTER PERFIL -->
+    <div class="p-3 bg-black/60 border-t border-amber-900/40 flex items-center justify-between backdrop-blur-sm">
+        <div class="flex items-center min-w-0 flex-1 mr-2">
+            <div class="badge-lucuma-brillante w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black text-stone-950 uppercase flex-shrink-0 mr-2.5" id="user-initials">
+                US
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-bold text-white truncate leading-none mb-1" id="user-fullname">
+                    Cargando...
+                </p>
+                <p class="text-[9px] text-amber-400 truncate font-black uppercase tracking-wider" id="user-role-label">
+                    ROL
+                </p>
+            </div>
+        </div>
+        <a href="/logout.php" class="text-amber-400/80 hover:text-white p-1.5 transition flex-shrink-0" title="Cerrar Sesión Central">
+            <i class="fa-solid fa-power-off text-sm"></i>
+        </a>
+    </div>
+</aside>

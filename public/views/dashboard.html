@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGH V. 2.0 | Telesalud y Lotes FUA</title>
+    <!-- Rutas relativas corregidas desde /public/views/ -->
+    <link rel="stylesheet" href="../css/tailwind.min.css">
+    <link rel="stylesheet" href="../css/all.min.css">
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- CONTENEDOR DINÁMICO DEL SIDEBAR -->
+        <div id="sidebar-container"></div>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
+                <h1 class="text-lg font-bold text-gray-800" id="titulo-bienvenida">Cargando sistema...</h1>
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs bg-red-100 text-red-600 font-bold px-3 py-1 rounded-full uppercase" id="badge-rol">Cargando rol...</span>
+                </div>
+            </header>
+
+            <main class="p-8">
+                <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
+                    <h3 class="text-base font-bold text-gray-800 mb-2">Panel General de Estadísticas</h3>
+                    <p class="text-xs text-gray-500">Resumen y métricas operativas del núcleo de alto rendimiento en Rust.</p>
+                </div>
+            </main>
+
+            <div id="footer-container"></div>
+        </div>
+
+    </div>
+
+    <!-- Script que inyecta el Sidebar y gestiona la sesión -->
+    <script src="../js/sidebar.js"></script>
+</body>
+</html>

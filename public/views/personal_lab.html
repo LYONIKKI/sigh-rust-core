@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGH V. 2.0 | Personal Receptor de Laboratorio</title>
+    <link rel="stylesheet" href="../css/tailwind.min.css">
+    <link rel="stylesheet" href="../css/all.min.css">
+    <link rel="stylesheet" href="../css/telesalud.css">
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+
+    <div class="flex h-screen overflow-hidden">
+        <div id="sidebar-container"></div>
+
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <span class="p-2 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-users text-lg"></i></span>
+                    <h1 class="text-base font-bold text-gray-800">Catálogo de Personal Receptor</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full uppercase" id="badge-rol">...</span>
+                </div>
+            </header>
+
+            <main class="p-8 space-y-6">
+
+                <!-- TARJETAS SUPERIORES -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Personal Habilitado</p>
+                            <h3 class="text-2xl font-black text-amber-600 tracking-wider mt-1" id="card-total-personal">0</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Autorizados para retiro</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500 text-white text-xl shadow-sm">
+                            <i class="fa-solid fa-id-badge"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Áreas Operativas</p>
+                            <h3 class="text-2xl font-black text-gray-800 mt-1" id="card-total-areas">3</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Laboratorio, Banco, Patología</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 text-xl">
+                            <i class="fa-solid fa-hospital-user"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-center">
+                        <button id="btn-abrir-crear" class="btn-lucuma w-full h-full py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-2 text-sm shadow">
+                            <i class="fa-solid fa-user-plus text-base mr-2"></i>
+                            <span>Nuevo Personal</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BANDEJA DE PERSONAL -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-bold text-gray-800">Directorio de Biólogos, Tecnólogos y Técnicos</h2>
+                            <p class="text-xs text-gray-400">Padrón oficial habilitado para registro de salidas y firmas</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                </span>
+                                <input type="text" id="filtro-personal" placeholder="Buscar por DNI, nombres, área o alias..." class="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-amber-500 w-72">
+                            </div>
+                            <button id="btn-refrescar" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-semibold flex items-center transition">
+                                <i class="fa-solid fa-arrows-rotate mr-1.5"></i>
+                                <span>Actualizar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
+                                    <th class="py-3 px-4 text-center">N°</th>
+                                    <th class="py-3 px-4 font-mono">DNI</th>
+                                    <th class="py-3 px-4">Apellidos y Nombres</th>
+                                    <th class="py-3 px-4">Área / Servicio</th>
+                                    <th class="py-3 px-4">Cargo Oficial</th>
+                                    <th class="py-3 px-4">Alias</th>
+                                    <th class="py-3 px-4 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-personal-cuerpo" class="divide-y divide-gray-100 text-gray-700">
+                                <tr>
+                                    <td colspan="7" class="text-center py-6 text-gray-400">Cargando personal...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
+                        <span id="info-paginacion">Mostrando 0 de 0 registros</span>
+                        <div class="flex items-center space-x-1.5" id="controles-paginacion"></div>
+                    </div>
+                </div>
+
+            </main>
+
+            <div id="footer-container"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: REGISTRAR / EDITAR PERSONAL -->
+    <div id="modal-personal" class="modal-overlay">
+        <div class="modal-dialog max-w-md">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-user-pen text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide" id="modal-titulo">Ficha de Personal</h3>
+                </div>
+                <button id="btn-cerrar-modal" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-3">
+                <input type="hidden" id="personal-id">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">DNI:</label>
+                        <input type="text" id="personal-dni" maxlength="10" placeholder="Ej. 47079718" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Alias / Referencia:</label>
+                        <input type="text" id="personal-alias" placeholder="Ej. JAIRO" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Apellidos y Nombres:</label>
+                    <input type="text" id="personal-nombres" placeholder="Ej. LINO BLANCAS, JAIRO JAIR" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Área / Servicio:</label>
+                    <select id="personal-area" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                        <option value="LABORATORIO CENTRAL">LABORATORIO CENTRAL</option>
+                        <option value="BANCO DE SANGRE">BANCO DE SANGRE</option>
+                        <option value="ANATOMIA PATOLÓGICA">ANATOMIA PATOLÓGICA</option>
+                        <option value="DIGITACIÓN">DIGITACIÓN</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cargo Oficial:</label>
+                    <input type="text" id="personal-cargo" placeholder="Ej. TÉCNICO EN LABORATORIO" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="btn-cancelar-modal" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
+                <button id="btn-guardar-personal" class="btn-lucuma px-5 py-2 rounded-lg text-xs font-bold flex items-center">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>
+                    <span id="btn-texto-guardar">Guardar Datos</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: VER DETALLES (SOLO LECTURA) -->
+    <div id="modal-ver" class="modal-overlay">
+        <div class="modal-dialog max-w-sm">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-id-card text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Ficha Institucional</h3>
+                </div>
+                <button id="btn-cerrar-ver" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-3 text-xs">
+                <div class="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                    <p class="text-[10px] uppercase font-bold text-amber-800">Nombre Completo:</p>
+                    <p class="font-bold text-gray-900 text-sm mt-0.5" id="ver-nombres">---</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-400 font-bold">DNI:</p>
+                        <p class="font-mono font-bold text-gray-800" id="ver-dni">---</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase text-gray-400 font-bold">Alias:</p>
+                        <p class="font-bold text-amber-700" id="ver-alias">---</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-[10px] uppercase text-gray-400 font-bold">Área / Servicio:</p>
+                    <p class="font-semibold text-gray-800" id="ver-area">---</p>
+                </div>
+                <div>
+                    <p class="text-[10px] uppercase text-gray-400 font-bold">Cargo:</p>
+                    <p class="font-semibold text-gray-800" id="ver-cargo">---</p>
+                </div>
+                <div>
+                    <p class="text-[10px] uppercase text-gray-400 font-bold">Fecha de Alta:</p>
+                    <p class="font-mono text-gray-500" id="ver-fecha">---</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button id="btn-cerrar-ver-pie" class="btn-dark px-4 py-1.5 rounded-lg text-xs font-semibold">Cerrar Ficha</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/sweetalert2.all.min.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/personal_lab.js"></script>
+</body>
+</html>

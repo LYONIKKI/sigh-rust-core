@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGH V. 2.0 | Inventario de Insumos</title>
+    <link rel="stylesheet" href="../css/tailwind.min.css">
+    <link rel="stylesheet" href="../css/all.min.css">
+    <link rel="stylesheet" href="../css/telesalud.css">
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+
+    <div class="flex h-screen overflow-hidden">
+        <div id="sidebar-container"></div>
+
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <span class="p-2 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-boxes-stacked text-lg"></i></span>
+                    <h1 class="text-base font-bold text-gray-800">Catálogo e Inventario General de Insumos</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full uppercase" id="badge-rol">...</span>
+                </div>
+            </header>
+
+            <main class="p-8 space-y-6">
+
+                <!-- TARJETAS SUPERIORES -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total de Reactivos</p>
+                            <h3 class="text-2xl font-black text-amber-600 tracking-wider mt-1" id="card-total-insumos">0</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">En catálogo activo</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500 text-white text-xl shadow-sm">
+                            <i class="fa-solid fa-vials"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Stock Crítico</p>
+                            <h3 class="text-2xl font-black text-red-600 mt-1" id="card-stock-critico">0</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Agotados o bajo el mínimo</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-200 text-xl">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-center">
+                        <button id="btn-abrir-crear" class="btn-lucuma w-full h-full py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-2 text-sm shadow">
+                            <i class="fa-solid fa-plus-circle text-base mr-2"></i>
+                            <span>Nuevo Reactivo / Insumo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- BANDEJA DE INVENTARIO -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-bold text-gray-800">Directorio General de Existencias</h2>
+                            <p class="text-xs text-gray-400">Control visual por semáforo y fecha de caducidad</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                </span>
+                                <input type="text" id="filtro-inventario" placeholder="Buscar por código, reactivo, área..." class="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-amber-500 w-64">
+                            </div>
+                            <button id="btn-refrescar" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-semibold flex items-center transition">
+                                <i class="fa-solid fa-arrows-rotate mr-1.5"></i>
+                                <span>Actualizar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
+                                    <th class="py-3 px-4 text-center">Estado</th>
+                                    <th class="py-3 px-4">Código</th>
+                                    <th class="py-3 px-4">Descripción del Insumo</th>
+                                    <th class="py-3 px-4">Área / Ubicación</th>
+                                    <th class="py-3 px-4 text-center">Stock</th>
+                                    <th class="py-3 px-4">Último Ingreso</th>
+                                    <th class="py-3 px-4">Próx. Vencimiento</th>
+                                    <th class="py-3 px-4">Proveedor</th>
+                                    <th class="py-3 px-4 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-inventario-cuerpo" class="divide-y divide-gray-100 text-gray-700">
+                                <tr>
+                                    <td colspan="9" class="text-center py-6 text-gray-400">Cargando existencias...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
+                        <span id="info-paginacion">Mostrando 0 de 0 registros</span>
+                        <div class="flex items-center space-x-1.5" id="controles-paginacion"></div>
+                    </div>
+                </div>
+
+            </main>
+
+            <div id="footer-container"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: NUEVO INSUMO -->
+    <div id="modal-crear" class="modal-overlay">
+        <div class="modal-dialog max-w-xl">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-circle-plus text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Ficha Técnica de Nuevo Insumo</h3>
+                </div>
+                <button id="btn-cerrar-crear" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Código Oficial:</label>
+                        <input type="text" id="crear-codigo" placeholder="Ej. 29116 o 39039-01" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Área / Ubicación:</label>
+                        <select id="crear-ubicacion" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                            <option value="BIOQUIMICA">BIOQUÍMICA</option>
+                            <option value="HEMATOLOGIA">HEMATOLOGÍA</option>
+                            <option value="MICROBIOLOGIA">MICROBIOLOGÍA</option>
+                            <option value="BANCO DE SANGRE">BANCO DE SANGRE</option>
+                            <option value="ANATOMIA PATOLOGICA">ANATOMÍA PATOLÓGICA</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Descripción del Insumo / Reactivo:</label>
+                    <input type="text" id="crear-descripcion" placeholder="Ej. ASO LATEX X 50 DET" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Inicial:</label>
+                        <input type="number" id="crear-stock" value="1" min="0" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Mínimo Alerta:</label>
+                        <input type="number" id="crear-minimo" value="2" min="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Valor Unitario (S/):</label>
+                        <input type="number" id="crear-valor" step="0.01" value="0.00" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Proveedor:</label>
+                        <input type="text" id="crear-proveedor" placeholder="Ej. WIENER LAB" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Ingreso:</label>
+                        <input type="date" id="crear-fecha-ingreso" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Caducidad:</label>
+                        <input type="date" id="crear-fecha-vencimiento" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="btn-cancelar-crear" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
+                <button id="btn-guardar-crear" class="btn-lucuma px-5 py-2 rounded-lg text-xs font-bold flex items-center">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i>
+                    <span>Registrar Reactivo</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: EDITAR INSUMO -->
+    <div id="modal-editar" class="modal-overlay">
+        <div class="modal-dialog max-w-lg">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-pen-to-square text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Editar Reactivo</h3>
+                </div>
+                <button id="btn-cerrar-editar" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-3">
+                <input type="hidden" id="editar-id">
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Descripción:</label>
+                    <input type="text" id="editar-descripcion" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Área / Ubicación:</label>
+                        <select id="editar-ubicacion" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                            <option value="BIOQUIMICA">BIOQUÍMICA</option>
+                            <option value="HEMATOLOGIA">HEMATOLOGÍA</option>
+                            <option value="MICROBIOLOGIA">MICROBIOLOGÍA</option>
+                            <option value="BANCO DE SANGRE">BANCO DE SANGRE</option>
+                            <option value="ANATOMIA PATOLOGICA">ANATOMÍA PATOLÓGICA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Proveedor:</label>
+                        <input type="text" id="editar-proveedor" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Físico:</label>
+                        <input type="number" id="editar-stock-actual" min="0" class="w-full px-3 py-1.5 border border-amber-300 bg-amber-50/50 rounded-lg text-xs font-bold text-amber-900 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Mínimo:</label>
+                        <input type="number" id="editar-minimo" min="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Valor Unitario:</label>
+                        <input type="number" id="editar-valor" step="0.01" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Estado Catálogo:</label>
+                        <select id="editar-estado" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                            <option value="VIGENTE">VIGENTE</option>
+                            <option value="AGOTADO">AGOTADO</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="btn-cancelar-editar" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
+                <button id="btn-guardar-editar" class="btn-lucuma px-5 py-2 rounded-lg text-xs font-bold flex items-center">
+                    <i class="fa-solid fa-arrows-rotate mr-1.5"></i>
+                    <span>Actualizar Datos</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/sweetalert2.all.min.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/insumos.js"></script>
+</body>
+</html>

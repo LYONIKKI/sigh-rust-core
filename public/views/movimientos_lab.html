@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGH V. 2.0 | Movimientos de Laboratorio</title>
+    <link rel="stylesheet" href="../css/tailwind.min.css">
+    <link rel="stylesheet" href="../css/all.min.css">
+    <link rel="stylesheet" href="../css/telesalud.css">
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+
+    <div class="flex h-screen overflow-hidden">
+        <div id="sidebar-container"></div>
+
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <span class="p-2 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-arrow-right-arrow-left text-lg"></i></span>
+                    <h1 class="text-base font-bold text-gray-800">Movimientos de Laboratorio: Ingresos y Salidas</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full uppercase" id="badge-rol">...</span>
+                </div>
+            </header>
+
+            <main class="p-8 space-y-6">
+
+                <!-- FILTROS GLOBALES SUPERIORES -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div class="md:col-span-1">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Buscar Movimiento:</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"><i class="fa-solid fa-magnifying-glass text-xs"></i></span>
+                                <input type="text" id="filtro-texto" placeholder="Reactivo, personal o DNI..." class="pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-500 w-full">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Fecha Desde:</label>
+                            <input type="date" id="filtro-desde" class="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-500 w-full">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Fecha Hasta:</label>
+                            <input type="date" id="filtro-hasta" class="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-amber-500 w-full">
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="btn-filtrar" class="btn-dark flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center">
+                                <i class="fa-solid fa-filter mr-1.5"></i><span>Filtrar</span>
+                            </button>
+                            <button id="btn-limpiar-filtro" class="px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-xs font-semibold" title="Limpiar Filtros">
+                                <i class="fa-solid fa-broom"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABS Y BANDEJA PRINCIPAL -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    
+                    <div class="px-6 pt-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex space-x-6 text-xs font-bold">
+                            <button id="tab-btn-salidas" class="pb-3 border-b-2 border-amber-500 text-amber-700 flex items-center space-x-2 transition">
+                                <i class="fa-solid fa-dolly"></i>
+                                <span>Historial de Despachos (Salidas)</span>
+                            </button>
+                            <button id="tab-btn-ingresos" class="pb-3 border-b-2 border-transparent text-gray-400 hover:text-gray-700 flex items-center space-x-2 transition">
+                                <i class="fa-solid fa-boxes-packing"></i>
+                                <span>Historial de Remesas (Ingresos)</span>
+                            </button>
+                        </div>
+
+                        <div class="pb-3 flex space-x-2">
+                            <button id="btn-abrir-salida" class="btn-lucuma px-4 py-2 rounded-xl font-bold flex items-center text-xs shadow">
+                                <i class="fa-solid fa-minus-circle mr-1.5"></i>
+                                <span>Registrar Salida</span>
+                            </button>
+                            <button id="btn-abrir-ingreso" class="px-4 py-2 rounded-xl font-bold bg-green-700 hover:bg-green-800 text-white flex items-center text-xs shadow transition">
+                                <i class="fa-solid fa-circle-plus mr-1.5"></i>
+                                <span>Registrar Ingreso</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 1: SALIDAS / DESPACHOS -->
+                    <div id="seccion-salidas" class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
+                                    <th class="py-3 px-4">Fecha / Hora</th>
+                                    <th class="py-3 px-4">Código</th>
+                                    <th class="py-3 px-4">Descripción del Insumo</th>
+                                    <th class="py-3 px-4 text-center">Cant.</th>
+                                    <th class="py-3 px-4">Personal Receptor</th>
+                                    <th class="py-3 px-4">DNI</th>
+                                    <th class="py-3 px-4">Área / Destino</th>
+                                    <th class="py-3 px-4">Cargo</th>
+                                    <th class="py-3 px-4">Despachado Por</th>
+                                    <th class="py-3 px-4 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-salidas-cuerpo" class="divide-y divide-gray-100 text-gray-700">
+                                <tr><td colspan="10" class="text-center py-6 text-gray-400">Cargando salidas...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB 2: INGRESOS / REMESAS -->
+                    <div id="seccion-ingresos" class="overflow-x-auto hidden">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
+                                    <th class="py-3 px-4">Fecha Ingreso</th>
+                                    <th class="py-3 px-4">Código</th>
+                                    <th class="py-3 px-4">Descripción del Insumo</th>
+                                    <th class="py-3 px-4 font-mono">Lote</th>
+                                    <th class="py-3 px-4 text-center">Cant.</th>
+                                    <th class="py-3 px-4">F. Caducidad</th>
+                                    <th class="py-3 px-4">Proveedor</th>
+                                    <th class="py-3 px-4">Recibido Por</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-ingresos-cuerpo" class="divide-y divide-gray-100 text-gray-700">
+                                <tr><td colspan="8" class="text-center py-6 text-gray-400">Cargando ingresos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
+                        <span id="info-paginacion">Mostrando 0 de 0 registros</span>
+                        <div class="flex items-center space-x-1.5" id="controles-paginacion"></div>
+                    </div>
+                </div>
+
+            </main>
+
+            <div id="footer-container"></div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVA SALIDA -->
+    <div id="modal-salida" class="modal-overlay">
+        <div class="modal-dialog max-w-lg">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-dolly text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Formulario de Salida de Insumos</h3>
+                </div>
+                <button id="btn-cerrar-salida" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Insumo a Despachar:</label>
+                    <select id="sal-insumo-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                        <option value="">Cargando catálogo...</option>
+                    </select>
+                    <p class="text-[11px] text-gray-500 mt-1">Stock Físico Disponible: <span class="font-bold text-green-700 font-mono" id="sal-stock-disp">0</span></p>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad para Salida:</label>
+                    <input type="number" id="sal-cantidad" min="1" value="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-amber-700 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Personal Receptor (DNI, Nombre o Alias):</label>
+                    <div class="relative">
+                        <input type="text" id="sal-buscar-personal" placeholder="Ej. YASER, 71418005 o ALZAMORA..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        <div id="sal-sugerencias-personal" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto hidden"></div>
+                    </div>
+                </div>
+
+                <div id="sal-preview-personal" class="hidden preview-card space-y-1 text-xs">
+                    <p><b>Receptor:</b> <span id="sal-pv-nombre" class="uppercase text-gray-800">---</span></p>
+                    <p><b>DNI:</b> <span id="sal-pv-dni" class="font-mono text-gray-700">---</span></p>
+                    <p><b>Área:</b> <span id="sal-pv-area" class="text-gray-700">---</span> | <b>Cargo:</b> <span id="sal-pv-cargo" class="text-gray-700">---</span></p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="btn-cancelar-salida" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
+                <button id="btn-guardar-salida" disabled class="btn-lucuma px-5 py-2 rounded-lg text-xs font-bold flex items-center disabled:opacity-50">
+                    <i class="fa-solid fa-check mr-1.5"></i><span>Confirmar Despacho</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR SALIDA -->
+    <div id="modal-editar-salida" class="modal-overlay">
+        <div class="modal-dialog max-w-lg">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-pen-to-square text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Editar Registro de Salida</h3>
+                </div>
+                <button id="btn-cerrar-editar-salida" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-sal-id">
+
+                <div class="bg-amber-50/50 p-3 rounded-xl border border-amber-200/60 text-xs">
+                    <p class="text-[10px] text-amber-800 uppercase font-black">Insumo Despachado:</p>
+                    <p class="font-bold text-gray-900 mt-0.5" id="edit-sal-insumo-desc">---</p>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad Despachada:</label>
+                    <input type="number" id="edit-sal-cantidad" min="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-amber-700 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Personal Receptor (DNI, Nombre o Alias):</label>
+                    <div class="relative">
+                        <input type="text" id="edit-sal-buscar-personal" placeholder="Buscar personal..." class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        <div id="edit-sal-sugerencias-personal" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto hidden"></div>
+                    </div>
+                </div>
+
+                <div id="edit-sal-preview-personal" class="preview-card space-y-1 text-xs">
+                    <p><b>Receptor:</b> <span id="edit-sal-pv-nombre" class="uppercase text-gray-800">---</span></p>
+                    <p><b>DNI:</b> <span id="edit-sal-pv-dni" class="font-mono text-gray-700">---</span></p>
+                    <p><b>Área:</b> <span id="edit-sal-pv-area" class="text-gray-700">---</span> | <b>Cargo:</b> <span id="edit-sal-pv-cargo" class="text-gray-700">---</span></p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="btn-cancelar-editar-salida" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
+                <button id="btn-guardar-editar-salida" class="btn-lucuma px-5 py-2 rounded-lg text-xs font-bold flex items-center">
+                    <i class="fa-solid fa-arrows-rotate mr-1.5"></i><span>Actualizar Salida</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO INGRESO -->
+    <div id="modal-ingreso" class="modal-overlay">
+        <div class="modal-dialog max-w-lg">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-boxes-packing text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Formulario de Ingreso / Remesa</h3>
+                </div>
+                <button id="btn-cerrar-ingreso" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Seleccionar Insumo del Catálogo:</label>
+                    <select id="ing-insumo-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                        <option value="">Cargando catálogo...</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Número de Lote:</label>
+                        <input type="text" id="ing-lote" placeholder="Ej. L-2026A" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad que Ingresa:</label>
+                        <input type="number" id="ing-cantidad" min="1" value="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-green-700 focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Ingreso:</label>
+                        <input type="date" id="ing-fecha-ingreso" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Caducidad:</label>
+                        <input type="date" id="ing-fecha-vencimiento" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button id="btn-cancelar-ingreso" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
+                <button id="btn-guardar-ingreso" class="px-5 py-2 rounded-lg text-xs font-bold bg-green-700 hover:bg-green-800 text-white flex items-center shadow">
+                    <i class="fa-solid fa-floppy-disk mr-1.5"></i><span>Registrar Ingreso</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/sweetalert2.all.min.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script src="../js/movimientos_lab.js"></script>
+</body>
+</html>

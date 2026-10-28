@@ -3,32 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGH V. 2.0 | Telesalud y Lotes FUA</title>
-    <!-- Rutas relativas corregidas desde /public/views/ -->
+    <title>SIGH V. 2.0 | Historial y Rastreo FUA Telesalud</title>
     <link rel="stylesheet" href="../css/tailwind.min.css">
     <link rel="stylesheet" href="../css/all.min.css">
+    <link rel="stylesheet" href="../css/telesalud.css">
 </head>
-<body class="bg-gray-100 font-sans antialiased">
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
 
     <div class="flex h-screen overflow-hidden">
         
-        <!-- CONTENEDOR DINÁMICO DEL SIDEBAR -->
+        <!-- SIDEBAR -->
         <div id="sidebar-container"></div>
 
         <!-- CONTENIDO PRINCIPAL -->
         <div class="flex-1 flex flex-col overflow-y-auto">
-            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8">
-                <h1 class="text-lg font-bold text-gray-800" id="titulo-bienvenida">Cargando sistema...</h1>
+            
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
-                    <span class="text-xs bg-red-100 text-red-600 font-bold px-3 py-1 rounded-full uppercase" id="badge-rol">Cargando rol...</span>
+                    <span class="p-2 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-chart-line text-lg"></i></span>
+                    <h1 class="text-base font-bold text-gray-800">Panel Histórico y Auditoría de FUAs Telesalud</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full uppercase" id="badge-rol">...</span>
                 </div>
             </header>
 
-            <main class="p-8">
-                <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-200">
-                    <h3 class="text-base font-bold text-gray-800 mb-2">Panel General de Estadísticas</h3>
-                    <p class="text-xs text-gray-500">Resumen y métricas operativas del núcleo de alto rendimiento en Rust.</p>
+            <main class="p-8 space-y-6">
+
+                <!-- TARJETAS SUPERIORES CON ACCIÓN DE RASTREO -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total en Rango</p>
+                            <h3 class="text-2xl font-black text-amber-600 tracking-wider mt-1" id="card-total-registros">0</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Atenciones históricas filtradas</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500 text-white text-xl shadow-sm">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Lote Autorizado</p>
+                            <h3 class="text-xl font-black text-gray-800 mt-1">57000 - 60000</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Rango oficial de Telesalud</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 text-xl">
+                            <i class="fa-solid fa-barcode"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-center">
+                        <button id="btn-abrir-rastreo" class="btn-lucuma w-full h-full py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-2 text-sm shadow">
+                            <i class="fa-solid fa-magnifying-glass-location text-base mr-2"></i>
+                            <span>Rastrear por N° de FUA</span>
+                        </button>
+                    </div>
                 </div>
+
+                <!-- BANDEJA DE HISTORIAL -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    
+                    <!-- BARRA DE FILTROS SUPERIOR -->
+                    <div class="p-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-bold text-gray-800">Historial General de Asignaciones</h2>
+                            <p class="text-xs text-gray-400">Consulta global de auditoría (sin datos sensibles en bandeja)</p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center space-x-1.5 text-xs text-gray-600 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                                <span class="font-bold text-gray-500 text-[11px] uppercase">Desde:</span>
+                                <input type="date" id="filtro-desde" class="bg-transparent border-0 outline-none text-xs text-gray-700 font-semibold">
+                                <span class="font-bold text-gray-500 text-[11px] uppercase ml-1">Hasta:</span>
+                                <input type="date" id="filtro-hasta" class="bg-transparent border-0 outline-none text-xs text-gray-700 font-semibold">
+                                <button id="btn-filtrar-fechas" class="ml-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold text-xs transition">
+                                    <i class="fa-solid fa-filter mr-1"></i>Filtrar
+                                </button>
+                            </div>
+
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                </span>
+                                <input type="text" id="filtro-search" placeholder="Buscar paciente, cuenta o FUA..." class="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-amber-500 w-64">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TABLA SIN: NRO DOC, MÉDICO NI FECHA NACIMIENTO -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
+                                    <th class="py-3 px-3">Fecha / Hora</th>
+                                    <th class="py-3 px-3">Cuenta</th>
+                                    <th class="py-3 px-3">Paciente</th>
+                                    <th class="py-3 px-3">N° Historia</th>
+                                    <th class="py-3 px-3">FUA Orig.</th>
+                                    <th class="py-3 px-3">FUA Atención</th>
+                                    <th class="py-3 px-3">FUA Farm.</th>
+                                    <th class="py-3 px-3">FUA Lab.</th>
+                                    <th class="py-3 px-3">FUA Imág.</th>
+                                    <th class="py-3 px-3">Registrado Por</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-historial-cuerpo" class="divide-y divide-gray-100 text-gray-700">
+                                <tr>
+                                    <td colspan="10" class="text-center py-6 text-gray-400">Cargando historial...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- PAGINACIÓN -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
+                        <span id="info-paginacion">Mostrando 0 de 0 registros</span>
+                        <div class="flex items-center space-x-1.5" id="controles-paginacion"></div>
+                    </div>
+
+                </div>
+
             </main>
 
             <div id="footer-container"></div>
@@ -36,7 +132,102 @@
 
     </div>
 
-    <!-- Script que inyecta el Sidebar y gestiona la sesión -->
+    <!-- MODAL DE RASTREO RÁPIDO DE FUA -->
+    <div id="modal-rastreo" class="modal-overlay hidden">
+        <div class="modal-dialog max-w-lg">
+            
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-magnifying-glass-location text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Rastreo Directo de FUA</h3>
+                </div>
+                <button id="btn-cerrar-rastreo" class="text-gray-400 hover:text-white p-1 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Número de FUA a Consultar:</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="input-fua-buscar" placeholder="Ej. 00057821" maxlength="20" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono font-bold text-amber-700 focus:outline-none focus:border-amber-500">
+                        <button id="btn-ejecutar-rastreo" class="btn-dark px-4 py-2 font-bold rounded-lg text-xs flex items-center">
+                            <i class="fa-solid fa-magnifying-glass mr-1.5"></i>
+                            <span>Rastrear</span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">Busca coincidencias en FUA Atención, Farmacia, Laboratorio o Imágenes.</p>
+                </div>
+
+                <!-- CONTENEDOR CON RESULTADO DETALLADO -->
+                <div id="resultado-rastreo" class="hidden p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2.5 text-xs">
+                    <div class="flex items-center justify-between border-b border-gray-200 pb-2">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Cuenta #<span id="rt-cuenta" class="text-gray-800 font-bold">---</span></span>
+                        <span id="rt-badge-tipo" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">COINCIDENCIA</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="col-span-2">
+                            <p class="text-gray-400 text-[10px] uppercase">Paciente:</p>
+                            <p class="font-bold text-gray-900 text-sm" id="rt-paciente">---</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-[10px] uppercase">DNI / HC:</p>
+                            <p class="font-bold text-gray-800" id="rt-doc">---</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-[10px] uppercase">Fecha de Nacimiento:</p>
+                            <p class="font-semibold text-gray-700" id="rt-fnac">---</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-[10px] uppercase">Médico Tratante:</p>
+                            <p class="font-bold text-gray-800 truncate" id="rt-medico">---</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-[10px] uppercase">Servicio / Cita:</p>
+                            <p class="font-semibold text-gray-700 truncate" id="rt-servicio">---</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-2 pt-2 border-t border-gray-200">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase mb-1">Paquete de FUAs de esta Atención:</p>
+                        <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                            <div class="p-1.5 bg-amber-50 rounded border border-amber-200">
+                                <span class="text-[9px] text-amber-800 block font-sans font-bold">ATENCIÓN:</span>
+                                <span id="rt-fua-atencion" class="font-bold text-amber-900">---</span>
+                            </div>
+                            <div class="p-1.5 bg-emerald-50 rounded border border-emerald-200">
+                                <span class="text-[9px] text-emerald-800 block font-sans font-bold">FARMACIA:</span>
+                                <span id="rt-fua-farmacia" class="font-bold text-emerald-900">---</span>
+                            </div>
+                            <div class="p-1.5 bg-blue-50 rounded border border-blue-200">
+                                <span class="text-[9px] text-blue-800 block font-sans font-bold">LABORATORIO:</span>
+                                <span id="rt-fua-lab" class="font-bold text-blue-900">---</span>
+                            </div>
+                            <div class="p-1.5 bg-purple-50 rounded border border-purple-200">
+                                <span class="text-[9px] text-purple-800 block font-sans font-bold">IMÁGENES:</span>
+                                <span id="rt-fua-img" class="font-bold text-purple-900">---</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 text-[10px] text-gray-400 flex justify-between">
+                        <span>Registrado por: <b class="text-gray-600" id="rt-usuario">---</b></span>
+                        <span id="rt-fecha-registro">---</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button id="btn-cerrar-rastreo-pie" class="btn-dark px-4 py-2 rounded-lg text-xs font-semibold">Cerrar</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="../js/sweetalert2.all.min.js"></script>
     <script src="../js/sidebar.js"></script>
+    <script src="../js/dashboard_telesalud.js"></script>
 </body>
 </html>

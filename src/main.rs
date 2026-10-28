@@ -54,6 +54,11 @@ use controllers::movimientos_lab_controller::{
     selector_insumos_activos,
 };
 
+use controllers::dashboard_telesalud_controller::{
+    listar_historial_fuas, 
+    rastrear_fua_especifico,
+};
+
 use config::init_databases;
 use middlewares::{verificar_rol_admin, verificar_rol_lab, verificar_rol_telesalud};
 #[tokio::main]
@@ -71,6 +76,8 @@ async fn main() {
         .route("/fua", post(guardar_fua_telesalud))
         .route("/fua/siguiente", get(obtener_siguiente_fua))
         .route("/fua/hoy", get(listar_fuas_hoy))
+        .route("/dashboard/historial", get(listar_historial_fuas))
+        .route("/dashboard/rastrear/{fua}", get(rastrear_fua_especifico))
         .route_layer(middleware::from_fn(verificar_rol_telesalud));
 
     // 2. Grupo Usuarios (Solo Admin)

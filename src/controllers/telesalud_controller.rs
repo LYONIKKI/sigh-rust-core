@@ -156,7 +156,7 @@ pub async fn obtener_siguiente_fua(State(state): State<AppState>) -> Response {
     }
 }
 
-/// 3. GET: Listar atenciones de hoy
+/// 3. GET: Listar atenciones de los últimos 5 días (orden cronológico descendente)
 pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
     let mut client = state.db_sql.lock().await;
 
@@ -177,7 +177,7 @@ pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
             CONVERT(VARCHAR(8), FechaRegistro, 108) AS HoraRegistro,
             UPPER(UsuarioRegistro) AS UsuarioRegistro
         FROM dbo.telesalud
-        WHERE CAST(FechaRegistro AS DATE) = CAST(GETDATE() AS DATE)
+        WHERE CAST(FechaRegistro AS DATE) >= DATEADD(DAY, -4, CAST(GETDATE() AS DATE))
         ORDER BY FechaRegistro DESC;
     ";
 
@@ -186,10 +186,10 @@ pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
             let rows = match stream.into_first_result().await {
                 Ok(r) => r,
                 Err(err) => {
-                    eprintln!("❌ Error consumiendo registros del día: {:?}", err);
+                    eprintln!("❌ Error consumiendo registros recientes: {:?}", err);
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({"status": "error", "message": "Error al leer filas del día"})),
+                        Json(json!({"status": "error", "message": "Error al leer filas de atenciones recientes"})),
                     ).into_response();
                 }
             };
@@ -217,10 +217,10 @@ pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
             (StatusCode::OK, Json(json!({"status": "success", "total": lista.len(), "data": lista}))).into_response()
         }
         Err(err) => {
-            eprintln!("❌ Error listando registros del día: {:?}", err);
+            eprintln!("❌ Error listando registros recientes: {:?}", err);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": "Error al obtener las atenciones de hoy"})),
+                Json(json!({"status": "error", "message": "Error al obtener las atenciones de los últimos 5 días"})),
             ).into_response()
         }
     }

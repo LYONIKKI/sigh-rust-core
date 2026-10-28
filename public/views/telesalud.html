@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIGH V. 2.0 | Gestión y Lotes FUA Telesalud</title>
-    <!-- CSS Locales -->
     <link rel="stylesheet" href="../css/tailwind.min.css">
     <link rel="stylesheet" href="../css/all.min.css">
     <link rel="stylesheet" href="../css/telesalud.css">
@@ -12,11 +11,8 @@
 <body class="bg-gray-100 font-sans antialiased text-gray-800">
 
     <div class="flex h-screen overflow-hidden">
-        
-        <!-- SIDEBAR DINÁMICO -->
         <div id="sidebar-container"></div>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <div class="flex-1 flex flex-col overflow-y-auto">
             
             <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
@@ -35,7 +31,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Siguiente FUA a Asignar</p>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Siguiente FUA Sugerido</p>
                             <h3 class="text-2xl font-black text-amber-600 tracking-wider mt-1" id="card-siguiente-fua">--------</h3>
                             <p class="text-[11px] text-gray-500 mt-0.5">Lote autorizado: 57000 - 60000</p>
                         </div>
@@ -58,7 +54,7 @@
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-center">
                         <button id="btn-abrir-modal" class="btn-lucuma w-full h-full py-4 px-6 rounded-xl font-bold flex items-center justify-center space-x-2 text-sm shadow">
                             <i class="fa-solid fa-plus-circle text-base mr-2"></i>
-                            <span>Asignar FUA Telesalud</span>
+                            <span>Asignar FUAs Telesalud</span>
                         </button>
                     </div>
                 </div>
@@ -68,17 +64,15 @@
                     <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h2 class="text-sm font-bold text-gray-800">Bandeja de FUAs Asignados Hoy</h2>
-                            <p class="text-xs text-gray-400">Listado cronológico de auditoría local</p>
+                            <p class="text-xs text-gray-400">Listado cronológico de auditoría institucional</p>
                         </div>
                         <div class="flex items-center space-x-3">
-                            <!-- Buscador en tiempo real -->
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
                                     <i class="fa-solid fa-magnifying-glass text-xs"></i>
                                 </span>
                                 <input type="text" id="filtro-telesalud" placeholder="Filtrar por paciente, cuenta, DNI, FUA..." class="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-amber-500 w-64">
                             </div>
-                            <!-- Botón refrescar -->
                             <button id="btn-refrescar" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-semibold flex items-center transition">
                                 <i class="fa-solid fa-arrows-rotate mr-1.5"></i>
                                 <span>Actualizar</span>
@@ -90,31 +84,30 @@
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
                                 <tr class="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
-                                    <th class="py-3 px-4">Hora</th>
-                                    <th class="py-3 px-4">Cuenta</th>
-                                    <th class="py-3 px-4">Paciente</th>
-                                    <th class="py-3 px-4">DNI / HC</th>
-                                    <th class="py-3 px-4">FUA Original</th>
-                                    <th class="py-3 px-4">FUA Telesalud</th>
-                                    <th class="py-3 px-4">Médico / Servicio</th>
-                                    <th class="py-3 px-4">Usuario</th>
-                                    <th class="py-3 px-4 text-center">Acciones</th>
+                                    <th class="py-3 px-3">Hora</th>
+                                    <th class="py-3 px-3">Cuenta</th>
+                                    <th class="py-3 px-3">Paciente</th>
+                                    <th class="py-3 px-3">DNI / HC</th>
+                                    <th class="py-3 px-3">FUA Atención</th>
+                                    <th class="py-3 px-3">FUA Farmacia</th>
+                                    <th class="py-3 px-3">FUA Laborat.</th>
+                                    <th class="py-3 px-3">FUA Imágenes</th>
+                                    <th class="py-3 px-3">Médico</th>
+                                    <th class="py-3 px-3">Usuario</th>
+                                    <th class="py-3 px-3 text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-cuerpo-hoy" class="divide-y divide-gray-100 text-gray-700">
                                 <tr>
-                                    <td colspan="9" class="text-center py-6 text-gray-400">Cargando registros...</td>
+                                    <td colspan="11" class="text-center py-6 text-gray-400">Cargando registros...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <!-- BARRA DE PAGINACIÓN TELESALUD -->
                     <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
                         <span id="info-paginacion-telesalud">Mostrando 0 de 0 registros</span>
-                        <div class="flex items-center space-x-1.5" id="controles-paginacion-telesalud">
-                            <!-- Los botones se generan dinámicamente con JS -->
-                        </div>
+                        <div class="flex items-center space-x-1.5" id="controles-paginacion-telesalud"></div>
                     </div>
                 </div>
 
@@ -122,17 +115,16 @@
 
             <div id="footer-container"></div>
         </div>
-
     </div>
 
-    <!-- MODAL DE ASIGNACIÓN -->
+    <!-- MODAL DE ASIGNACIÓN Y EDICIÓN -->
     <div id="modal-asignar" class="modal-overlay hidden">
-        <div class="modal-dialog">
+        <div class="modal-dialog max-w-xl">
             
             <div class="modal-header-lucuma">
                 <div class="flex items-center">
                     <i class="fa-solid fa-file-signature text-amber-400 mr-2 text-base"></i>
-                    <h3 class="text-sm font-bold tracking-wide">Asignación de FUA Telesalud</h3>
+                    <h3 class="text-sm font-bold tracking-wide" id="modal-titulo">Asignación de Lotes FUA Telesalud</h3>
                 </div>
                 <button id="btn-cerrar-modal" class="text-gray-400 hover:text-white p-1 text-lg">
                     <i class="fa-solid fa-xmark"></i>
@@ -144,7 +136,7 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Cuenta de Atención (GalenHos):</label>
                     <div class="flex space-x-2">
-                        <input type="number" id="input-cuenta" placeholder="Ej. 341269" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-500">
+                        <input type="number" id="input-cuenta" placeholder="Ej. 344034" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-amber-500">
                         <button id="btn-buscar-cuenta" class="btn-dark px-4 py-2 font-bold rounded-lg text-xs flex items-center">
                             <i class="fa-solid fa-magnifying-glass mr-1.5"></i>
                             <span>Buscar</span>
@@ -172,6 +164,10 @@
                             <p class="font-bold text-gray-700" id="pv-fua-orig">---</p>
                         </div>
                         <div>
+                            <p class="text-gray-400 text-[10px] uppercase">Fecha de Cita:</p>
+                            <p class="font-mono font-bold text-amber-700 truncate" id="pv-fecha-cita">---</p>
+                        </div>
+                        <div class="col-span-2">
                             <p class="text-gray-400 text-[10px] uppercase">Servicio:</p>
                             <p class="font-bold text-gray-700 truncate" id="pv-servicio">---</p>
                         </div>
@@ -182,10 +178,42 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">FUA Telesalud Asignado (Editado):</label>
-                    <input type="text" id="input-fua-editado" placeholder="00057001" maxlength="16" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono font-bold text-amber-700 focus:outline-none focus:border-amber-500">
-                    <p class="text-[10px] text-gray-400 mt-1">Lote autorizado: 57000 a 60000.</p>
+                <!-- BLOQUE DE ASIGNACIÓN DE FUAS (4 CAMPOS) -->
+                <div class="bg-gray-50/80 p-4 rounded-xl border border-gray-200 space-y-3">
+                    <p class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-rectangle-list text-amber-600 mr-1.5"></i>
+                        <span>Asignación de Correlativos (Rango 57000 - 60000)</span>
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-amber-800 uppercase mb-1">
+                                <i class="fa-solid fa-user-doctor mr-1"></i> FUA Atención (Médico):
+                            </label>
+                            <input type="text" id="input-fua-editado" placeholder="00057001" maxlength="16" class="w-full px-3 py-1.5 border border-amber-300 bg-amber-50/50 rounded-lg text-xs font-mono font-bold text-amber-800 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                <i class="fa-solid fa-pills mr-1 text-emerald-600"></i> FUA Farmacia:
+                            </label>
+                            <input type="text" id="input-fua-farmacia" placeholder="Opcional" maxlength="16" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                <i class="fa-solid fa-vial mr-1 text-blue-600"></i> FUA Laboratorio:
+                            </label>
+                            <input type="text" id="input-fua-laboratorio" placeholder="Opcional" maxlength="16" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                <i class="fa-solid fa-x-ray mr-1 text-purple-600"></i> FUA Imágenes:
+                            </label>
+                            <input type="text" id="input-fua-imagenes" placeholder="Opcional" maxlength="16" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -194,7 +222,7 @@
                 <button id="btn-cancelar" class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-100">Cancelar</button>
                 <button id="btn-guardar-fua" disabled class="btn-lucuma px-5 py-2 rounded-lg text-xs font-bold flex items-center">
                     <i class="fa-solid fa-floppy-disk mr-1.5"></i>
-                    <span>Confirmar y Guardar FUA</span>
+                    <span id="btn-texto-guardar">Confirmar y Guardar FUAs</span>
                 </button>
             </div>
 

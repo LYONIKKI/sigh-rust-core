@@ -13,6 +13,9 @@ pub struct TelesaludFuaRecord {
     pub cita_servicio_jamo: Option<String>,
     pub cita_fecha: Option<String>,
     pub fua_numero_editado: Option<String>,
+    pub fua_farmacia: Option<String>,
+    pub fua_laboratorio: Option<String>,
+    pub fua_imagenes: Option<String>,
 }
 
 // DTO para recibir el payload POST al guardar
@@ -28,6 +31,9 @@ pub struct GuardarFuaRequest {
     pub cita_servicio_jamo: Option<String>,
     pub cita_fecha: Option<String>,
     pub fua_numero_editado: String,
+    pub fua_farmacia: Option<String>,
+    pub fua_laboratorio: Option<String>,
+    pub fua_imagenes: Option<String>,
     pub usuario_registro: String,
 }
 
@@ -37,11 +43,15 @@ pub struct TelesaludHoyRecord {
     pub id_cuenta_atencion: i32,
     pub fua_numero_original: Option<String>,
     pub fua_numero_editado: String,
+    pub fua_farmacia: Option<String>,
+    pub fua_laboratorio: Option<String>,
+    pub fua_imagenes: Option<String>,
     pub documento_numero: Option<String>,
     pub nro_historia_clinica: Option<String>,
     pub paciente_nombre: Option<String>,
     pub fua_medico: Option<String>,
     pub cita_servicio_jamo: Option<String>,
+    pub cita_fecha: Option<String>,
     pub hora_registro: String,
     pub usuario_registro: String,
 }

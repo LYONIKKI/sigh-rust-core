@@ -28,7 +28,6 @@ pub async fn listar_historial_fuas(
             UPPER(ISNULL(PacienteNombre, '---')) AS PacienteNombre,
             ISNULL(NroHistoriaClinica, '---') AS NroHistoriaClinica,
             FuaNumeroOriginal,
-            FuaNumeroEditado,
             FuaFarmacia,
             FuaLaboratorio,
             FuaImagenes,
@@ -39,7 +38,7 @@ pub async fn listar_historial_fuas(
           AND (
                 PacienteNombre LIKE @P3 
              OR CAST(idCuentaAtencion AS VARCHAR(20)) LIKE @P3 
-             OR FuaNumeroEditado LIKE @P3
+             OR ISNULL(FuaNumeroOriginal, '') LIKE @P3
              OR ISNULL(FuaFarmacia, '') LIKE @P3
              OR ISNULL(FuaLaboratorio, '') LIKE @P3
              OR ISNULL(FuaImagenes, '') LIKE @P3
@@ -67,7 +66,6 @@ pub async fn listar_historial_fuas(
                     paciente_nombre: row.try_get::<&str, _>("PacienteNombre").ok().flatten().map(|s| s.trim().to_string()),
                     nro_historia_clinica: row.try_get::<&str, _>("NroHistoriaClinica").ok().flatten().map(|s| s.trim().to_string()),
                     fua_numero_original: row.try_get::<&str, _>("FuaNumeroOriginal").ok().flatten().map(|s| s.trim().to_string()),
-                    fua_numero_editado: row.try_get::<&str, _>("FuaNumeroEditado").ok().flatten().unwrap_or("").trim().to_string(),
                     fua_farmacia: row.try_get::<&str, _>("FuaFarmacia").ok().flatten().map(|s| s.trim().to_string()),
                     fua_laboratorio: row.try_get::<&str, _>("FuaLaboratorio").ok().flatten().map(|s| s.trim().to_string()),
                     fua_imagenes: row.try_get::<&str, _>("FuaImagenes").ok().flatten().map(|s| s.trim().to_string()),
@@ -89,7 +87,7 @@ pub async fn listar_historial_fuas(
 }
 
 /// 2. GET /api/telesalud/dashboard/rastrear/{fua}
-/// Rastrea a qué paciente y cuenta corresponde cualquier FUA (Atención, Farmacia, Lab o Imágenes)
+/// Rastrea a qué paciente y cuenta corresponde cualquier FUA (Atención Original, Farmacia, Lab o Imágenes)
 pub async fn rastrear_fua_especifico(
     State(state): State<AppState>,
     Path(fua): Path<String>,
@@ -108,21 +106,20 @@ pub async fn rastrear_fua_especifico(
             UPPER(CitaServicioJamo) AS CitaServicioJamo,
             CONVERT(VARCHAR(19), CitaFecha, 120) AS CitaFecha,
             FuaNumeroOriginal,
-            FuaNumeroEditado,
             FuaFarmacia,
             FuaLaboratorio,
             FuaImagenes,
             UPPER(UsuarioRegistro) AS UsuarioRegistro,
             CONVERT(VARCHAR(19), FechaRegistro, 120) AS FechaRegistro,
             CASE 
-                WHEN FuaNumeroEditado = @P1 THEN 'FUA DE ATENCIÓN MÉDICA'
+                WHEN FuaNumeroOriginal = @P1 THEN 'FUA DE ATENCIÓN MÉDICA (ORIGINAL)'
                 WHEN FuaFarmacia = @P1 THEN 'FUA DE FARMACIA'
                 WHEN FuaLaboratorio = @P1 THEN 'FUA DE LABORATORIO'
                 WHEN FuaImagenes = @P1 THEN 'FUA DE IMÁGENES'
                 ELSE 'FUA ASOCIADO'
             END AS TipoCoincidente
         FROM dbo.telesalud
-        WHERE FuaNumeroEditado = @P1 
+        WHERE FuaNumeroOriginal = @P1 
            OR FuaFarmacia = @P1 
            OR FuaLaboratorio = @P1 
            OR FuaImagenes = @P1;
@@ -141,7 +138,6 @@ pub async fn rastrear_fua_especifico(
                     cita_servicio_jamo: row.try_get::<&str, _>("CitaServicioJamo").ok().flatten().map(|s| s.trim().to_string()),
                     cita_fecha: row.try_get::<&str, _>("CitaFecha").ok().flatten().map(|s| s.trim().to_string()),
                     fua_numero_original: row.try_get::<&str, _>("FuaNumeroOriginal").ok().flatten().map(|s| s.trim().to_string()),
-                    fua_numero_editado: row.try_get::<&str, _>("FuaNumeroEditado").ok().flatten().unwrap_or("").trim().to_string(),
                     fua_farmacia: row.try_get::<&str, _>("FuaFarmacia").ok().flatten().map(|s| s.trim().to_string()),
                     fua_laboratorio: row.try_get::<&str, _>("FuaLaboratorio").ok().flatten().map(|s| s.trim().to_string()),
                     fua_imagenes: row.try_get::<&str, _>("FuaImagenes").ok().flatten().map(|s| s.trim().to_string()),

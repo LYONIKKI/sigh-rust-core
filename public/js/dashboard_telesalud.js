@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     } catch (_) {}
 
-    // Establecer fechas por defecto: primer día del mes actual hasta hoy
+    // Rango inicial: primer día del mes actual hasta hoy
     const hoy = new Date();
     const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     
@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const paciente = (item.paciente_nombre || "").toLowerCase();
             const cuenta = String(item.id_cuenta_atencion || "");
             const hc = String(item.nro_historia_clinica || "");
-            const fuaAtenc = String(item.fua_numero_editado || "");
+            const fuaAtenc = String(item.fua_numero_original || "");
             const fuaFarm = String(item.fua_farmacia || "");
             const fuaLab = String(item.fua_laboratorio || "");
             const fuaImg = String(item.fua_imagenes || "");
@@ -96,7 +96,7 @@ async function cargarHistorial() {
     const desde = inputDesde.value;
     const hasta = inputHasta.value;
 
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Consultando historial...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Consultando historial...</td></tr>`;
 
     try {
         const res = await fetch(`${API_BASE}/historial?desde=${desde}&hasta=${hasta}`, { headers: getHeaders() });
@@ -109,10 +109,10 @@ async function cargarHistorial() {
             paginaActual = 1;
             renderizarTabla();
         } else {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-red-500">${json.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-red-500">${json.message}</td></tr>`;
         }
     } catch (_) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-red-500">Error al comunicar con el servidor Rust.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-red-500">Error al comunicar con el servidor Rust.</td></tr>`;
     }
 }
 
@@ -121,7 +121,7 @@ function renderizarTabla() {
     const total = listaFiltrada.length;
 
     if (total === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-gray-400">No se encontraron atenciones en el rango seleccionado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-gray-400">No se encontraron atenciones en el rango seleccionado.</td></tr>`;
         document.getElementById("info-paginacion").innerText = "Mostrando 0 de 0 registros";
         document.getElementById("controles-paginacion").innerHTML = "";
         return;
@@ -140,8 +140,7 @@ function renderizarTabla() {
             <td class="py-3 px-3 font-bold text-gray-800">${item.id_cuenta_atencion}</td>
             <td class="py-3 px-3 font-semibold text-gray-900 uppercase">${item.paciente_nombre || '---'}</td>
             <td class="py-3 px-3 font-mono text-gray-600">${item.nro_historia_clinica || '---'}</td>
-            <td class="py-3 px-3 font-mono text-gray-400">${item.fua_numero_original || '---'}</td>
-            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-mono font-bold">${item.fua_numero_editado}</span></td>
+            <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-mono font-bold">${item.fua_numero_original || '---'}</span></td>
             <td class="py-3 px-3 font-mono text-emerald-700 font-semibold">${item.fua_farmacia || '---'}</td>
             <td class="py-3 px-3 font-mono text-blue-700 font-semibold">${item.fua_laboratorio || '---'}</td>
             <td class="py-3 px-3 font-mono text-purple-700 font-semibold">${item.fua_imagenes || '---'}</td>
@@ -195,7 +194,7 @@ async function ejecutarRastreo() {
             document.getElementById("rt-medico").innerText = d.fua_medico || "---";
             document.getElementById("rt-servicio").innerText = `${d.cita_servicio_jamo || 'Consulta Externa'} (${d.cita_fecha || 'Sin fecha'})`;
             
-            document.getElementById("rt-fua-atencion").innerText = d.fua_numero_editado;
+            document.getElementById("rt-fua-atencion").innerText = d.fua_numero_original || "Sin FUA original";
             document.getElementById("rt-fua-farmacia").innerText = d.fua_farmacia || "No emitido";
             document.getElementById("rt-fua-lab").innerText = d.fua_laboratorio || "No emitido";
             document.getElementById("rt-fua-img").innerText = d.fua_imagenes || "No emitido";

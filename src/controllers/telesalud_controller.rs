@@ -11,7 +11,6 @@ use crate::config::AppState;
 
 #[derive(Deserialize)]
 pub struct ActualizarFuaRequest {
-    pub fua_numero_editado: String,
     pub fua_farmacia: Option<String>,
     pub fua_laboratorio: Option<String>,
     pub fua_imagenes: Option<String>,
@@ -55,7 +54,6 @@ pub async fn consultar_fua_telesalud(
             UPPER(sfa.FuaMedico) AS FuaMedico,
             UPPER(ace.CitaServicioJamo) AS CitaServicioJamo,
             CONVERT(VARCHAR(19), ace.CitaFecha, 120) AS CitaFecha,
-            tel.FuaNumeroEditado,
             tel.FuaFarmacia,
             tel.FuaLaboratorio,
             tel.FuaImagenes
@@ -88,7 +86,6 @@ pub async fn consultar_fua_telesalud(
                 fua_medico: row.try_get::<&str, _>("FuaMedico").ok().flatten().map(|s| s.trim().to_string()),
                 cita_servicio_jamo: row.try_get::<&str, _>("CitaServicioJamo").ok().flatten().map(|s| s.trim().to_string()),
                 cita_fecha: row.try_get::<&str, _>("CitaFecha").ok().flatten().map(|s| s.trim().to_string()),
-                fua_numero_editado: row.try_get::<&str, _>("FuaNumeroEditado").ok().flatten().map(|s| s.trim().to_string()),
                 fua_farmacia: row.try_get::<&str, _>("FuaFarmacia").ok().flatten().map(|s| s.trim().to_string()),
                 fua_laboratorio: row.try_get::<&str, _>("FuaLaboratorio").ok().flatten().map(|s| s.trim().to_string()),
                 fua_imagenes: row.try_get::<&str, _>("FuaImagenes").ok().flatten().map(|s| s.trim().to_string()),
@@ -110,21 +107,19 @@ pub async fn consultar_fua_telesalud(
     }
 }
 
-/// 2. GET: Calcular siguiente correlativo considerando las 4 columnas de FUAs
+/// 2. GET: Calcular siguiente correlativo considerando únicamente Farmacia, Laboratorio e Imágenes
 pub async fn obtener_siguiente_fua(State(state): State<AppState>) -> Response {
     let mut client = state.db_sql.lock().await;
 
     let query = "
         SELECT ISNULL(MAX(val), 56999) + 1 AS SiguienteFua
         FROM (
-            SELECT CAST(FuaNumeroEditado AS INT) AS val FROM dbo.telesalud WHERE ISNUMERIC(FuaNumeroEditado) = 1
-            UNION ALL
             SELECT CAST(FuaFarmacia AS INT) AS val FROM dbo.telesalud WHERE ISNUMERIC(FuaFarmacia) = 1
             UNION ALL
             SELECT CAST(FuaLaboratorio AS INT) AS val FROM dbo.telesalud WHERE ISNUMERIC(FuaLaboratorio) = 1
             UNION ALL
             SELECT CAST(FuaImagenes AS INT) AS val FROM dbo.telesalud WHERE ISNUMERIC(FuaImagenes) = 1
-        ) AS CorrelativosGlobales;
+        ) AS CorrelativosTelesalud;
     ";
 
     match client.query(query, &[]).await {
@@ -156,7 +151,7 @@ pub async fn obtener_siguiente_fua(State(state): State<AppState>) -> Response {
     }
 }
 
-/// 3. GET: Listar atenciones de los últimos 5 días (orden cronológico descendente)
+/// 3. GET: Listar atenciones de los últimos 5 días
 pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
     let mut client = state.db_sql.lock().await;
 
@@ -164,7 +159,6 @@ pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
         SELECT 
             idCuentaAtencion,
             FuaNumeroOriginal,
-            FuaNumeroEditado,
             FuaFarmacia,
             FuaLaboratorio,
             FuaImagenes,
@@ -199,7 +193,6 @@ pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
                 lista.push(TelesaludHoyRecord {
                     id_cuenta_atencion: row.try_get::<i32, _>("idCuentaAtencion").ok().flatten().unwrap_or(0),
                     fua_numero_original: row.try_get::<&str, _>("FuaNumeroOriginal").ok().flatten().map(|s| s.trim().to_string()),
-                    fua_numero_editado: row.try_get::<&str, _>("FuaNumeroEditado").ok().flatten().unwrap_or("").trim().to_string(),
                     fua_farmacia: row.try_get::<&str, _>("FuaFarmacia").ok().flatten().map(|s| s.trim().to_string()),
                     fua_laboratorio: row.try_get::<&str, _>("FuaLaboratorio").ok().flatten().map(|s| s.trim().to_string()),
                     fua_imagenes: row.try_get::<&str, _>("FuaImagenes").ok().flatten().map(|s| s.trim().to_string()),
@@ -226,31 +219,11 @@ pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
     }
 }
 
-/// 4. POST: Guardar atención con Servicio, Fecha de Cita y las 4 FUAs
+/// 4. POST: Guardar atención con FUA Original y complementarios opcionales
 pub async fn guardar_fua_telesalud(
     State(state): State<AppState>,
     Json(payload): Json<GuardarFuaRequest>,
 ) -> Response {
-    let fua_atencion = payload.fua_numero_editado.trim();
-    if fua_atencion.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "El FUA de atención es obligatorio."})),
-        ).into_response();
-    }
-
-    if let Ok(num) = fua_atencion.parse::<i32>() {
-        if num < 57000 || num > 60000 {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "status": "error",
-                    "message": format!("El FUA {} está fuera del rango (57000 al 60000).", num)
-                })),
-            ).into_response();
-        }
-    }
-
     let opt_farmacia = match limpiar_fua_opcional(payload.fua_farmacia) {
         Ok(v) => v,
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": e}))).into_response(),
@@ -264,23 +237,20 @@ pub async fn guardar_fua_telesalud(
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": e}))).into_response(),
     };
 
-    // Validar duplicidad interna dentro del mismo formulario
-    let mut asignados = vec![fua_atencion];
+    // Validar duplicidad interna entre los 3 servicios complementarios
+    let mut asignados: Vec<&str> = Vec::new();
     if let Some(ref f) = opt_farmacia {
-        if asignados.contains(&f.as_str()) {
-            return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": "El FUA de Farmacia coincide con otro FUA asignado"}))).into_response();
-        }
         asignados.push(f.as_str());
     }
     if let Some(ref f) = opt_laboratorio {
         if asignados.contains(&f.as_str()) {
-            return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": "El FUA de Laboratorio coincide con otro FUA asignado"}))).into_response();
+            return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": "El FUA de Laboratorio coincide con Farmacia"}))).into_response();
         }
         asignados.push(f.as_str());
     }
     if let Some(ref f) = opt_imagenes {
         if asignados.contains(&f.as_str()) {
-            return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": "El FUA de Imágenes coincide con otro FUA asignado"}))).into_response();
+            return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": "El FUA de Imágenes coincide con otro servicio asignado"}))).into_response();
         }
     }
 
@@ -297,14 +267,13 @@ pub async fn guardar_fua_telesalud(
             FuaMedico,
             CitaServicioJamo,
             CitaFecha,
-            FuaNumeroEditado,
             FuaFarmacia,
             FuaLaboratorio,
             FuaImagenes,
             UsuarioRegistro,
             FechaRegistro
         ) VALUES (
-            @P1, @P2, @P3, @P4, UPPER(@P5), @P6, UPPER(@P7), UPPER(@P8), @P9, @P10, @P11, @P12, @P13, UPPER(@P14), GETDATE()
+            @P1, @P2, @P3, @P4, UPPER(@P5), @P6, UPPER(@P7), UPPER(@P8), @P9, @P10, @P11, @P12, UPPER(@P13), GETDATE()
         );
     ";
 
@@ -334,7 +303,6 @@ pub async fn guardar_fua_telesalud(
             &fua_med,
             &serv,
             &cita_f,
-            &fua_atencion,
             &ref_farmacia,
             &ref_laboratorio,
             &ref_imagenes,
@@ -347,7 +315,7 @@ pub async fn guardar_fua_telesalud(
             StatusCode::CREATED,
             Json(json!({
                 "status": "success",
-                "message": format!("FUAs asignados exitosamente a la cuenta {}", payload.id_cuenta_atencion)
+                "message": format!("Atención {} registrada exitosamente en Telesalud", payload.id_cuenta_atencion)
             })),
         ).into_response(),
         Err(err) => {
@@ -372,20 +340,12 @@ pub async fn guardar_fua_telesalud(
     }
 }
 
-/// 5. PUT: Actualizar los FUAs de una cuenta
+/// 5. PUT: Actualizar Farmacia, Laboratorio e Imágenes de una cuenta
 pub async fn actualizar_fua_telesalud(
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarFuaRequest>,
 ) -> Response {
-    let fua_atencion = payload.fua_numero_editado.trim();
-    if fua_atencion.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "El FUA de atención no puede estar vacío."})),
-        ).into_response();
-    }
-
     let opt_farmacia = match limpiar_fua_opcional(payload.fua_farmacia) {
         Ok(v) => v,
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": e}))).into_response(),
@@ -403,13 +363,12 @@ pub async fn actualizar_fua_telesalud(
 
     let update_query = "
         UPDATE dbo.telesalud
-        SET FuaNumeroEditado = @P1,
-            FuaFarmacia = @P2,
-            FuaLaboratorio = @P3,
-            FuaImagenes = @P4,
-            UsuarioRegistro = UPPER(@P5),
+        SET FuaFarmacia = @P1,
+            FuaLaboratorio = @P2,
+            FuaImagenes = @P3,
+            UsuarioRegistro = UPPER(@P4),
             FechaRegistro = GETDATE()
-        WHERE idCuentaAtencion = @P6;
+        WHERE idCuentaAtencion = @P5;
     ";
 
     let ref_farmacia = opt_farmacia.as_deref();
@@ -417,7 +376,7 @@ pub async fn actualizar_fua_telesalud(
     let ref_imagenes = opt_imagenes.as_deref();
     let usuario = payload.usuario_registro.trim();
 
-    let result = client.execute(update_query, &[&fua_atencion, &ref_farmacia, &ref_laboratorio, &ref_imagenes, &usuario, &id]).await;
+    let result = client.execute(update_query, &[&ref_farmacia, &ref_laboratorio, &ref_imagenes, &usuario, &id]).await;
 
     match result {
         Ok(_) => (

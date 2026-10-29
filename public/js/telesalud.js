@@ -19,7 +19,7 @@ const btnCerrarModal = document.getElementById("btn-cerrar-modal");
 const btnCancelar = document.getElementById("btn-cancelar");
 const btnBuscarCuenta = document.getElementById("btn-buscar-cuenta");
 const inputCuenta = document.getElementById("input-cuenta");
-const inputFuaEditado = document.getElementById("input-fua-editado");
+const inputFuaAtencionFijo = document.getElementById("input-fua-atencion-fijo");
 const inputFuaFarmacia = document.getElementById("input-fua-farmacia");
 const inputFuaLaboratorio = document.getElementById("input-fua-laboratorio");
 const inputFuaImagenes = document.getElementById("input-fua-imagenes");
@@ -43,9 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (sess && sess.usuario) window.usuarioSesion = sess.usuario.toUpperCase();
             if (sess && sess.rol) window.rolSesion = sess.rol.toLowerCase().trim();
         }
-    } catch (e) {
-        console.warn("Usando sesión por defecto.");
-    }
+    } catch (_) {}
 
     cargarSiguienteFua();
     cargarTablaHoy();
@@ -78,7 +76,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const cuenta = String(item.id_cuenta_atencion || "");
                 const doc = String(item.documento_numero || "");
                 const hc = String(item.nro_historia_clinica || "");
-                const fuaAtenc = String(item.fua_numero_editado || "");
+                const fuaAtenc = String(item.fua_numero_original || "");
                 const fuaFarm = String(item.fua_farmacia || "");
                 const fuaLab = String(item.fua_laboratorio || "");
                 const fuaImg = String(item.fua_imagenes || "");
@@ -109,6 +107,7 @@ function abrirModalNuevo() {
     inputCuenta.value = "";
     inputCuenta.disabled = false;
     btnBuscarCuenta.disabled = false;
+    inputFuaAtencionFijo.value = "";
     inputFuaFarmacia.value = "";
     inputFuaLaboratorio.value = "";
     inputFuaImagenes.value = "";
@@ -131,9 +130,6 @@ async function cargarSiguienteFua() {
         const json = await res.json();
         if (json.status === "success") {
             document.getElementById("card-siguiente-fua").innerText = json.siguiente_fua;
-            if (!esModoEdicion) {
-                inputFuaEditado.value = json.siguiente_fua;
-            }
         }
     } catch (err) {
         console.error("Error al obtener correlativo:", err);
@@ -153,7 +149,7 @@ async function cargarTablaHoy() {
             paginaActualTelesalud = 1;
             renderizarPaginacionTelesalud();
         }
-    } catch (err) {
+    } catch (_) {
         tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-red-500">Error al cargar la bandeja del día.</td></tr>`;
     }
 }
@@ -176,7 +172,7 @@ function renderizarPaginacionTelesalud() {
     const fin = Math.min(inicio + filasPorPaginaTelesalud, total);
     const registrosPagina = listaFiltradaTelesalud.slice(inicio, fin);
 
-    tbody.innerHTML = registrosPagina.map((item, index) => {
+    tbody.innerHTML = registrosPagina.map(item => {
         const idxGlobal = listaAtencionesHoy.indexOf(item);
         return `
             <tr class="hover:bg-amber-50/40 transition">
@@ -184,7 +180,7 @@ function renderizarPaginacionTelesalud() {
                 <td class="py-3 px-3 font-bold text-gray-800">${item.id_cuenta_atencion}</td>
                 <td class="py-3 px-3 font-semibold text-gray-900 uppercase">${item.paciente_nombre || '---'}</td>
                 <td class="py-3 px-3 text-gray-600">${item.documento_numero || 'S/D'}</td>
-                <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-mono font-bold">${item.fua_numero_editado}</span></td>
+                <td class="py-3 px-3"><span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-mono font-bold">${item.fua_numero_original || '---'}</span></td>
                 <td class="py-3 px-3 font-mono text-emerald-700 font-semibold">${item.fua_farmacia || '---'}</td>
                 <td class="py-3 px-3 font-mono text-blue-700 font-semibold">${item.fua_laboratorio || '---'}</td>
                 <td class="py-3 px-3 font-mono text-purple-700 font-semibold">${item.fua_imagenes || '---'}</td>
@@ -260,17 +256,19 @@ async function buscarCuenta() {
 
         document.getElementById("pv-nombre").innerText = datosAtencionActual.paciente_nombre || "---";
         document.getElementById("pv-doc").innerText = `${doc} / HC: ${hc}`;
-        document.getElementById("pv-fua-orig").innerText = datosAtencionActual.fua_numero_original || "Sin FUA original";
         document.getElementById("pv-medico").innerText = datosAtencionActual.fua_medico || "---";
         document.getElementById("pv-servicio").innerText = datosAtencionActual.cita_servicio_jamo || "Consulta Externa";
         document.getElementById("pv-fecha-cita").innerText = datosAtencionActual.cita_fecha || "Sin fecha";
 
+        // Fijar FUA original en el campo bloqueado
+        inputFuaAtencionFijo.value = datosAtencionActual.fua_numero_original || "S/FUA";
+
         const badgeEstado = document.getElementById("badge-estado-fua");
 
-        if (datosAtencionActual.fua_numero_editado) {
-            badgeEstado.innerText = `Asignado: ${datosAtencionActual.fua_numero_editado}`;
+        // Si ya tiene al menos uno asignado en telesalud
+        if (datosAtencionActual.fua_farmacia || datosAtencionActual.fua_laboratorio || datosAtencionActual.fua_imagenes) {
+            badgeEstado.innerText = "Registrado en Telesalud";
             badgeEstado.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
-            inputFuaEditado.value = datosAtencionActual.fua_numero_editado;
             inputFuaFarmacia.value = datosAtencionActual.fua_farmacia || "";
             inputFuaLaboratorio.value = datosAtencionActual.fua_laboratorio || "";
             inputFuaImagenes.value = datosAtencionActual.fua_imagenes || "";
@@ -279,7 +277,7 @@ async function buscarCuenta() {
             Swal.fire({
                 icon: "info",
                 title: "Cuenta Ya Registrada",
-                text: `Esta atención ya fue guardada con el FUA Atención: ${datosAtencionActual.fua_numero_editado}. Para modificarla usa el botón de editar en la tabla.`,
+                text: "Esta atención ya se encuentra guardada en Telesalud. Para modificar sus FUAs de apoyo utiliza el botón editar de la tabla.",
                 confirmButtonColor: "#d97706"
             });
         } else {
@@ -290,7 +288,7 @@ async function buscarCuenta() {
 
         previewPaciente.classList.remove("hidden");
 
-    } catch (err) {
+    } catch (_) {
         btnBuscarCuenta.innerHTML = `<i class="fa-solid fa-magnifying-glass mr-1.5"></i><span>Buscar</span>`;
         btnBuscarCuenta.disabled = false;
         Swal.fire({ icon: "error", title: "Error de red", text: "No se pudo comunicar con el servidor Rust.", confirmButtonColor: "#d97706" });
@@ -299,12 +297,6 @@ async function buscarCuenta() {
 
 async function procesarGuardadoFua() {
     if (!datosAtencionActual) return;
-
-    const fuaEditado = inputFuaEditado.value.trim();
-    if (!fuaEditado) {
-        Swal.fire({ icon: "warning", title: "Faltan datos", text: "El FUA de atención es obligatorio.", confirmButtonColor: "#d97706" });
-        return;
-    }
 
     const payload = {
         id_cuenta_atencion: datosAtencionActual.id_cuenta_atencion,
@@ -316,7 +308,6 @@ async function procesarGuardadoFua() {
         fua_medico: datosAtencionActual.fua_medico,
         cita_servicio_jamo: datosAtencionActual.cita_servicio_jamo,
         cita_fecha: datosAtencionActual.cita_fecha,
-        fua_numero_editado: fuaEditado,
         fua_farmacia: inputFuaFarmacia.value.trim() || null,
         fua_laboratorio: inputFuaLaboratorio.value.trim() || null,
         fua_imagenes: inputFuaImagenes.value.trim() || null,
@@ -337,7 +328,7 @@ async function procesarGuardadoFua() {
         });
 
         const json = await res.json();
-        btnGuardarFua.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1.5"></i> Guardar`;
+        btnGuardarFua.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1.5"></i> Confirmar y Guardar FUAs`;
 
         if (res.ok) {
             cerrarModal();
@@ -348,9 +339,9 @@ async function procesarGuardadoFua() {
             btnGuardarFua.disabled = false;
             Swal.fire({ icon: "error", title: "No se pudo procesar", text: json.message || "Ocurrió un error al guardar los FUAs.", confirmButtonColor: "#d97706" });
         }
-    } catch (err) {
+    } catch (_) {
         btnGuardarFua.disabled = false;
-        btnGuardarFua.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1.5"></i> Guardar`;
+        btnGuardarFua.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1.5"></i> Confirmar y Guardar FUAs`;
         Swal.fire({ icon: "error", title: "Error", text: "Error de conexión con el backend.", confirmButtonColor: "#d97706" });
     }
 }
@@ -363,7 +354,6 @@ window.abrirEditarFua = async function(idCuenta) {
             esModoEdicion = true;
             datosAtencionActual = json.data;
 
-            // Panangtaming kadagiti elemento tapno maliklikan ti TypeError (null)
             const titulo = document.getElementById("modal-titulo");
             if (titulo) titulo.innerText = `Editar FUAs - Cuenta #${idCuenta}`;
 
@@ -383,9 +373,6 @@ window.abrirEditarFua = async function(idCuenta) {
             const pvDoc = document.getElementById("pv-doc");
             if (pvDoc) pvDoc.innerText = `${doc} / HC: ${hc}`;
 
-            const pvFuaOrig = document.getElementById("pv-fua-orig");
-            if (pvFuaOrig) pvFuaOrig.innerText = datosAtencionActual.fua_numero_original || "Sin FUA original";
-
             const pvMedico = document.getElementById("pv-medico");
             if (pvMedico) pvMedico.innerText = datosAtencionActual.fua_medico || "---";
 
@@ -401,7 +388,7 @@ window.abrirEditarFua = async function(idCuenta) {
                 badgeEstado.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
             }
 
-            inputFuaEditado.value = datosAtencionActual.fua_numero_editado || "";
+            inputFuaAtencionFijo.value = datosAtencionActual.fua_numero_original || "S/FUA";
             inputFuaFarmacia.value = datosAtencionActual.fua_farmacia || "";
             inputFuaLaboratorio.value = datosAtencionActual.fua_laboratorio || "";
             inputFuaImagenes.value = datosAtencionActual.fua_imagenes || "";
@@ -413,12 +400,7 @@ window.abrirEditarFua = async function(idCuenta) {
             modalAsignar.classList.remove("hidden");
         }
     } catch (_) {
-        Swal.fire({ 
-            icon: "error", 
-            title: "Error", 
-            text: "No se pudieron obtener los datos para edición.", 
-            confirmButtonColor: "#d97706" 
-        });
+        Swal.fire({ icon: "error", title: "Error", text: "No se pudieron obtener los datos para edición.", confirmButtonColor: "#d97706" });
     }
 };
 
@@ -432,11 +414,10 @@ window.verDetalle = function(index) {
             <div class="text-left text-xs space-y-2 p-2 bg-gray-50 rounded-xl border border-gray-200">
                 <p><b>Paciente:</b> <span class="uppercase">${item.paciente_nombre || '---'}</span></p>
                 <p><b>DNI / HC:</b> ${item.documento_numero || 'S/D'} / HC: ${item.nro_historia_clinica || item.documento_numero || 'S/D'}</p>
-                <p><b>FUA Original:</b> <span class="font-mono">${item.fua_numero_original || '---'}</span></p>
                 <p><b>Servicio:</b> <span class="uppercase">${item.cita_servicio_jamo || '---'}</span></p>
                 <p><b>Fecha de Cita:</b> <span class="font-mono font-bold text-amber-700">${item.cita_fecha || '---'}</span></p>
                 <hr class="border-gray-200 my-1">
-                <p><b>FUA Atención:</b> <span class="font-mono font-bold text-amber-700">${item.fua_numero_editado}</span></p>
+                <p><b>FUA Atención (Médico):</b> <span class="font-mono font-bold text-amber-700">${item.fua_numero_original || '---'}</span></p>
                 <p><b>FUA Farmacia:</b> <span class="font-mono font-bold text-emerald-700">${item.fua_farmacia || 'No solicitado'}</span></p>
                 <p><b>FUA Laboratorio:</b> <span class="font-mono font-bold text-blue-700">${item.fua_laboratorio || 'No solicitado'}</span></p>
                 <p><b>FUA Imágenes:</b> <span class="font-mono font-bold text-purple-700">${item.fua_imagenes || 'No solicitado'}</span></p>
@@ -454,7 +435,7 @@ window.verDetalle = function(index) {
 window.eliminarFua = async function(idCuenta) {
     const confirm = await Swal.fire({
         title: '¿Liberar FUAs?',
-        text: `Se eliminará la cuenta #${idCuenta} de Telesalud y todos sus correlativos (Atención, Farmacia, Lab, Imágenes) volverán a estar disponibles.`,
+        text: `Se desvinculará la cuenta #${idCuenta} de Telesalud y sus números asignados de Farmacia, Laboratorio e Imágenes volverán a estar disponibles.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
@@ -476,10 +457,10 @@ window.eliminarFua = async function(idCuenta) {
                 cargarSiguienteFua();
                 cargarTablaHoy();
             } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: json.message, confirmButtonColor: '#d97706' });
+                Swal.fire({ icon: 'error', title: 'Error', text: json.message, confirmButtonColor: "#d97706" });
             }
-        } catch (e) {
-            Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo eliminar.', confirmButtonColor: '#d97706' });
+        } catch (_) {
+            Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo eliminar.', confirmButtonColor: "#d97706" });
         }
     }
 };

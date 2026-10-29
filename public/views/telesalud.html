@@ -59,7 +59,7 @@
                     </div>
                 </div>
 
-                <!-- BANDEJA DE HOY -->
+                <!-- BANDEJA DE ATENCIONES -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -160,14 +160,10 @@
                             <p class="font-bold text-gray-800" id="pv-doc">---</p>
                         </div>
                         <div>
-                            <p class="text-gray-400 text-[10px] uppercase">FUA Original:</p>
-                            <p class="font-bold text-gray-700" id="pv-fua-orig">---</p>
-                        </div>
-                        <div>
                             <p class="text-gray-400 text-[10px] uppercase">Fecha de Cita:</p>
                             <p class="font-mono font-bold text-amber-700 truncate" id="pv-fecha-cita">---</p>
                         </div>
-                        <div class="col-span-2">
+                        <div>
                             <p class="text-gray-400 text-[10px] uppercase">Servicio:</p>
                             <p class="font-bold text-gray-700 truncate" id="pv-servicio">---</p>
                         </div>
@@ -178,40 +174,43 @@
                     </div>
                 </div>
 
-                <!-- BLOQUE DE ASIGNACIÓN DE FUAS (4 CAMPOS) -->
+                <!-- BLOQUE DE ASIGNACIÓN -->
                 <div class="bg-gray-50/80 p-4 rounded-xl border border-gray-200 space-y-3">
-                    <p class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center">
-                        <i class="fa-solid fa-rectangle-list text-amber-600 mr-1.5"></i>
-                        <span>Asignación de Correlativos (Rango 57000 - 60000)</span>
-                    </p>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[11px] font-bold text-amber-800 uppercase mb-1">
-                                <i class="fa-solid fa-user-doctor mr-1"></i> FUA Atención (Médico):
-                            </label>
-                            <input type="text" id="input-fua-editado" placeholder="00057001" maxlength="16" class="w-full px-3 py-1.5 border border-amber-300 bg-amber-50/50 rounded-lg text-xs font-mono font-bold text-amber-800 focus:outline-none focus:border-amber-500">
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                <i class="fa-solid fa-pills mr-1 text-emerald-600"></i> FUA Farmacia:
-                            </label>
-                            <input type="text" id="input-fua-farmacia" placeholder="Opcional" maxlength="16" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
-                        </div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-rectangle-list text-amber-600 mr-1.5"></i>
+                            <span>Lote de Apoyo (Rango 57000 - 60000)</span>
+                        </p>
+                        <span class="text-[10px] text-gray-400 font-mono">FUA Atención se mantiene fijo</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
+                    <!-- FUA Atención en solo lectura -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">
+                            <i class="fa-solid fa-lock mr-1 text-amber-600"></i> FUA Atención (Médico - GalenHos):
+                        </label>
+                        <input type="text" id="input-fua-atencion-fijo" readonly class="w-full px-3 py-1.5 border border-gray-200 bg-gray-100 rounded-lg text-xs font-mono font-bold text-gray-600 cursor-not-allowed">
+                    </div>
+
+                    <!-- 3 Campos que sí consumen el correlativo 57000-60000 -->
+                    <div class="grid grid-cols-3 gap-2">
                         <div>
-                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                <i class="fa-solid fa-vial mr-1 text-blue-600"></i> FUA Laboratorio:
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1 truncate">
+                                <i class="fa-solid fa-pills mr-1 text-emerald-600"></i> Farmacia:
                             </label>
-                            <input type="text" id="input-fua-laboratorio" placeholder="Opcional" maxlength="16" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                            <input type="text" id="input-fua-farmacia" placeholder="Opcional" maxlength="16" class="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                <i class="fa-solid fa-x-ray mr-1 text-purple-600"></i> FUA Imágenes:
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1 truncate">
+                                <i class="fa-solid fa-vial mr-1 text-blue-600"></i> Laboratorio:
                             </label>
-                            <input type="text" id="input-fua-imagenes" placeholder="Opcional" maxlength="16" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                            <input type="text" id="input-fua-laboratorio" placeholder="Opcional" maxlength="16" class="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1 truncate">
+                                <i class="fa-solid fa-x-ray mr-1 text-purple-600"></i> Imágenes:
+                            </label>
+                            <input type="text" id="input-fua-imagenes" placeholder="Opcional" maxlength="16" class="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold text-gray-800 focus:outline-none focus:border-amber-500">
                         </div>
                     </div>
                 </div>

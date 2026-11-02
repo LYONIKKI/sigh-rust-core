@@ -113,3 +113,8 @@ sudo chmod -R 755 /home/user/proyectos/sigh_rust/public
 
 📄 Licencia
 Este software es propiedad intelectual del Ing. Anhgelo Smith Vega Poma (CIP 381913). Desarrollado para la Unidad de Estadística e Informática — Hospital Regional Daniel Alcides Carrión, Pasco, Perú. Queda prohibida su reproducción o distribución no autorizada.
+
+### ⚡ Rendimiento & Orquestación en Linux
+Desplegado en producción sobre Ubuntu Server como servicio independiente (`sigh-rust.service`), compilado en modo `--release`.
+* **Memory Footprint:** ~2.5 MB de consumo de memoria RAM en tiempo real bajo concurrencia continua.
+* **Uptime:** Servicio gestionado por `systemd` con reinicio automático ante fallos.

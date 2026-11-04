@@ -5,6 +5,7 @@ use axum::{
     Json,
 };
 use serde_json::json;
+use tiberius::ToSql;
 use crate::models::dashboard_telesalud::{
     DetalleRastreoFuaRecord, FiltroHistorialParams, FuaHistorialRecord,
 };
@@ -46,7 +47,8 @@ pub async fn listar_historial_fuas(
         ORDER BY FechaRegistro DESC;
     ";
 
-    match client.query(query, &[&desde, &hasta, &filtro]).await {
+    let sql_params: [&dyn ToSql; 3] = [&desde, &hasta, &filtro];
+    match client.query(query, &sql_params).await {
         Ok(stream) => {
             let rows = match stream.into_first_result().await {
                 Ok(r) => r,
@@ -125,7 +127,8 @@ pub async fn rastrear_fua_especifico(
            OR FuaImagenes = @P1;
     ";
 
-    match client.query(query, &[&fua_buscado]).await {
+    let sql_params: [&dyn ToSql; 1] = [&fua_buscado];
+    match client.query(query, &sql_params).await {
         Ok(stream) => match stream.into_row().await {
             Ok(Some(row)) => {
                 let detalle = DetalleRastreoFuaRecord {

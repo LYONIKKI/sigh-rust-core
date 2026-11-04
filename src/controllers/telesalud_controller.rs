@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use tiberius::ToSql;
 use crate::models::telesalud::{GuardarFuaRequest, TelesaludFuaRecord, TelesaludHoyRecord};
 use crate::config::AppState;
 
@@ -41,7 +42,7 @@ pub async fn consultar_fua_telesalud(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Response {
-    let mut client = state.db_sql.lock().await;
+    let mut client = state.get_sql_client().await;
 
     let query = "
         SELECT 
@@ -63,7 +64,8 @@ pub async fn consultar_fua_telesalud(
         WHERE sfa.idCuentaAtencion = @P1;
     ";
 
-    let stream = match client.query(query, &[&id]).await {
+    let params: [&dyn ToSql; 1] = [&id];
+    let stream = match client.query(query, &params).await {
         Ok(s) => s,
         Err(err) => {
             eprintln!("❌ Error ejecutando query en Tiberius: {:?}", err);
@@ -109,7 +111,7 @@ pub async fn consultar_fua_telesalud(
 
 /// 2. GET: Calcular siguiente correlativo considerando únicamente Farmacia, Laboratorio e Imágenes
 pub async fn obtener_siguiente_fua(State(state): State<AppState>) -> Response {
-    let mut client = state.db_sql.lock().await;
+    let mut client = state.get_sql_client().await;
 
     let query = "
         SELECT ISNULL(MAX(val), 56999) + 1 AS SiguienteFua
@@ -153,7 +155,7 @@ pub async fn obtener_siguiente_fua(State(state): State<AppState>) -> Response {
 
 /// 3. GET: Listar atenciones de los últimos 5 días
 pub async fn listar_fuas_hoy(State(state): State<AppState>) -> Response {
-    let mut client = state.db_sql.lock().await;
+    let mut client = state.get_sql_client().await;
 
     let query = "
         SELECT 
@@ -237,7 +239,6 @@ pub async fn guardar_fua_telesalud(
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": e}))).into_response(),
     };
 
-    // Validar duplicidad interna entre los 3 servicios complementarios
     let mut asignados: Vec<&str> = Vec::new();
     if let Some(ref f) = opt_farmacia {
         asignados.push(f.as_str());
@@ -254,7 +255,7 @@ pub async fn guardar_fua_telesalud(
         }
     }
 
-    let mut client = state.db_sql.lock().await;
+    let mut client = state.get_sql_client().await;
 
     let insert_query = "
         INSERT INTO dbo.telesalud (
@@ -291,24 +292,23 @@ pub async fn guardar_fua_telesalud(
     let ref_laboratorio = opt_laboratorio.as_deref();
     let ref_imagenes = opt_imagenes.as_deref();
 
-    let result = client.execute(
-        insert_query,
-        &[
-            &payload.id_cuenta_atencion,
-            &fua_orig,
-            &doc_num,
-            &nro_hc,
-            &pac_nom,
-            &fnac,
-            &fua_med,
-            &serv,
-            &cita_f,
-            &ref_farmacia,
-            &ref_laboratorio,
-            &ref_imagenes,
-            &usuario,
-        ],
-    ).await;
+    let params: [&dyn ToSql; 13] = [
+        &payload.id_cuenta_atencion,
+        &fua_orig,
+        &doc_num,
+        &nro_hc,
+        &pac_nom,
+        &fnac,
+        &fua_med,
+        &serv,
+        &cita_f,
+        &ref_farmacia,
+        &ref_laboratorio,
+        &ref_imagenes,
+        &usuario,
+    ];
+
+    let result = client.execute(insert_query, &params).await;
 
     match result {
         Ok(_) => (
@@ -359,7 +359,7 @@ pub async fn actualizar_fua_telesalud(
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": e}))).into_response(),
     };
 
-    let mut client = state.db_sql.lock().await;
+    let mut client = state.get_sql_client().await;
 
     let update_query = "
         UPDATE dbo.telesalud
@@ -376,7 +376,15 @@ pub async fn actualizar_fua_telesalud(
     let ref_imagenes = opt_imagenes.as_deref();
     let usuario = payload.usuario_registro.trim();
 
-    let result = client.execute(update_query, &[&ref_farmacia, &ref_laboratorio, &ref_imagenes, &usuario, &id]).await;
+    let params: [&dyn ToSql; 5] = [
+        &ref_farmacia,
+        &ref_laboratorio,
+        &ref_imagenes,
+        &usuario,
+        &id,
+    ];
+
+    let result = client.execute(update_query, &params).await;
 
     match result {
         Ok(_) => (
@@ -413,10 +421,11 @@ pub async fn eliminar_fua_telesalud(
     State(state): State<AppState>,
     Path(id): Path<i32>,
 ) -> Response {
-    let mut client = state.db_sql.lock().await;
+    let mut client = state.get_sql_client().await;
 
     let delete_query = "DELETE FROM dbo.telesalud WHERE idCuentaAtencion = @P1;";
-    match client.execute(delete_query, &[&id]).await {
+    let params: [&dyn ToSql; 1] = [&id];
+    match client.execute(delete_query, &params).await {
         Ok(_) => (
             StatusCode::OK,
             Json(json!({

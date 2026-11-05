@@ -9,6 +9,8 @@ pub struct SalidaLabRecord {
     pub insumo_codigo: String,
     pub insumo_descripcion: String,
     pub cantidad: i32,
+    pub tipo_despacho: Option<String>,
+    pub determinaciones_movidas: Option<i32>,
     pub personal_nombre: String,
     pub personal_dni: String,
     pub personal_area: String,
@@ -35,6 +37,7 @@ pub struct IngresoLabRecord {
 pub struct RegistrarSalidaRequest {
     pub insumo_id: i32,
     pub cantidad: i32,
+    pub tipo_despacho: Option<String>, // 'EMPAQUE_COMPLETO' o 'FRACCION_DET'
     #[allow(dead_code)]
     pub personal_id: i32,
     pub personal_dni: String,
@@ -49,15 +52,15 @@ pub struct RegistrarSalidaRequest {
 pub struct RegistrarIngresoRequest {
     pub insumo_id: i32,
     pub numero_lote: String,
-    pub fecha_ingreso: String,             // YYYY-MM-DD
-    pub fecha_vencimiento: Option<String>, // YYYY-MM-DD
+    pub fecha_ingreso: String,
+    pub fecha_vencimiento: Option<String>,
     pub cantidad: i32,
     #[allow(dead_code)]
     pub proveedor: Option<String>,
     pub usuario_registro: String,
 }
 
-/// DTO para el autocompletado en milisegundos del personal receptor
+/// DTO para el autocompletado del personal receptor
 #[derive(Serialize, Deserialize, Debug, FromRow)]
 pub struct PersonalAutocompletadoRecord {
     pub id: i32,
@@ -68,18 +71,25 @@ pub struct PersonalAutocompletadoRecord {
     pub alias: Option<String>,
 }
 
-/// DTO para el selector de insumos activos
+/// DTO para el selector y autocompletado de insumos activos
 #[derive(Serialize, Deserialize, Debug, FromRow)]
 pub struct InsumoSelectorRecord {
     pub id: i32,
     pub codigo: String,
     pub descripcion: String,
+    pub presentacion: String,
+    pub es_fraccionable: bool,
+    pub determinaciones_por_empaque: i32,
+    pub empaques_disponibles: i64,
+    pub det_abiertas_disponibles: i64,
     pub stock_disponible: i64,
 }
 
-/// Request para editar datos o rectificar la cantidad de una salida
+/// Request para editar datos o rectificar una salida
+/// Request para editar datos o rectificar una salida
 #[derive(Deserialize, Debug)]
 pub struct EditarSalidaRequest {
+    #[allow(dead_code)]
     pub cantidad_nueva: i32,
     pub personal_dni: String,
     pub personal_nombre: String,

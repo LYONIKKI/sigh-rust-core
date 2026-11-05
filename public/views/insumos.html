@@ -14,7 +14,6 @@
         <div id="sidebar-container"></div>
 
         <div class="flex-1 flex flex-col overflow-y-auto">
-            
             <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
                     <span class="p-2 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-boxes-stacked text-lg"></i></span>
@@ -26,7 +25,6 @@
             </header>
 
             <main class="p-8 space-y-6">
-
                 <!-- TARJETAS SUPERIORES -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center justify-between">
@@ -64,7 +62,7 @@
                     <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h2 class="text-sm font-bold text-gray-800">Directorio General de Existencias</h2>
-                            <p class="text-xs text-gray-400">Control visual por semáforo y fecha de caducidad</p>
+                            <p class="text-xs text-gray-400">Control visual por semáforo, presentación y vencimiento</p>
                         </div>
                         <div class="flex items-center space-x-3">
                             <div class="relative">
@@ -87,6 +85,7 @@
                                     <th class="py-3 px-4 text-center">Estado</th>
                                     <th class="py-3 px-4">Código</th>
                                     <th class="py-3 px-4">Descripción del Insumo</th>
+                                    <th class="py-3 px-4">Presentación</th>
                                     <th class="py-3 px-4">Área / Ubicación</th>
                                     <th class="py-3 px-4 text-center">Stock</th>
                                     <th class="py-3 px-4">Último Ingreso</th>
@@ -97,7 +96,7 @@
                             </thead>
                             <tbody id="tabla-inventario-cuerpo" class="divide-y divide-gray-100 text-gray-700">
                                 <tr>
-                                    <td colspan="9" class="text-center py-6 text-gray-400">Cargando existencias...</td>
+                                    <td colspan="10" class="text-center py-6 text-gray-400">Cargando existencias...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -108,9 +107,7 @@
                         <div class="flex items-center space-x-1.5" id="controles-paginacion"></div>
                     </div>
                 </div>
-
             </main>
-
             <div id="footer-container"></div>
         </div>
     </div>
@@ -126,15 +123,16 @@
                 <button id="btn-cerrar-crear" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="p-6 space-y-3">
+            <div class="p-6 space-y-4">
+                <!-- CÓDIGO Y ÁREA -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Código Oficial:</label>
-                        <input type="text" id="crear-codigo" placeholder="Ej. 29116 o 39039-01" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500 uppercase">
+                        <input type="text" id="crear-codigo" placeholder="Ej. 29116 o 39039-01" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500 uppercase">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Área / Ubicación:</label>
-                        <select id="crear-ubicacion" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                        <select id="crear-ubicacion" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
                             <option value="BIOQUIMICA">BIOQUÍMICA</option>
                             <option value="HEMATOLOGIA">HEMATOLOGÍA</option>
                             <option value="MICROBIOLOGIA">MICROBIOLOGÍA</option>
@@ -144,15 +142,79 @@
                     </div>
                 </div>
 
+                <!-- DESCRIPCIÓN -->
                 <div>
                     <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Descripción del Insumo / Reactivo:</label>
-                    <input type="text" id="crear-descripcion" placeholder="Ej. ASO LATEX X 50 DET" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                    <input type="text" id="crear-descripcion" placeholder="Ej. GLUCOSA LÍQUIDA" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
                 </div>
 
+                <!-- PRESENTACIÓN Y DETERMINACIONES -->
+                <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200 space-y-2">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-amber-900 uppercase mb-1">Presentación Física:</label>
+                            <select id="crear-presentacion" class="w-full px-3 py-1.5 border border-amber-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white font-semibold text-gray-800">
+                                <option value="FRASCO">FRASCO</option>
+                                <option value="KIT">KIT</option>
+                                <option value="CAJA">CAJA</option>
+                                <option value="BOTELLA">BOTELLA</option>
+                                <option value="GALON">GALÓN</option>
+                                <option value="UNIDAD">UNIDAD / OTRA</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end pb-1.5">
+                            <label class="flex items-center space-x-2 text-xs font-bold text-amber-900 cursor-pointer select-none">
+                                <input type="checkbox" id="crear-es-fraccionable" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+                                <span>¿Rinde por determinaciones?</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="bloque-determinaciones-crear" class="hidden grid grid-cols-2 gap-3 pt-2 border-t border-amber-200">
+                        <div>
+                            <label class="block text-[10px] font-bold text-amber-800 uppercase mb-0.5">Determinaciones por empaque:</label>
+                            <input type="number" id="crear-det-empaque" value="20" min="1" class="w-full px-3 py-1.5 border border-amber-400 rounded-lg text-xs font-bold text-amber-900 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div class="flex items-center">
+                            <p class="text-xs text-amber-900 font-bold" id="texto-calculo-crear">
+                                Total a ingresar: <span id="total-det-preview" class="text-amber-700 font-mono text-sm">20</span> determinaciones
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BLOQUE DESTACADO DE LOTE MANUAL Y STOCK INICIAL -->
+                <div class="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-amber-300 space-y-3">
+                    <span class="block text-[10px] font-black tracking-wider text-amber-800 uppercase">Datos del Lote Inicial Físico:</span>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-800 uppercase mb-1">N° LOTE FABRICANTE (*):</label>
+                            <input type="text" id="crear-lote" placeholder="EJ. L241098" class="w-full px-3 py-2 border-2 border-amber-400 bg-white rounded-lg text-xs font-mono font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-800 uppercase mb-1" id="lbl-stock-crear">CANTIDAD DE EMPAQUES:</label>
+                            <input type="number" id="crear-stock" value="1" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Ingreso:</label>
+                            <input type="date" id="crear-fecha-ingreso" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Caducidad:</label>
+                            <input type="date" id="crear-fecha-vencimiento" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PARÁMETROS GENERALES -->
                 <div class="grid grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Inicial:</label>
-                        <input type="number" id="crear-stock" value="1" min="0" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Proveedor:</label>
+                        <input type="text" id="crear-proveedor" placeholder="Ej. WIENER LAB" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Mínimo Alerta:</label>
@@ -161,21 +223,6 @@
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Valor Unitario (S/):</label>
                         <input type="number" id="crear-valor" step="0.01" value="0.00" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Proveedor:</label>
-                        <input type="text" id="crear-proveedor" placeholder="Ej. WIENER LAB" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Ingreso:</label>
-                        <input type="date" id="crear-fecha-ingreso" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Caducidad:</label>
-                        <input type="date" id="crear-fecha-vencimiento" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
                     </div>
                 </div>
             </div>
@@ -192,7 +239,7 @@
 
     <!-- MODAL 2: EDITAR INSUMO -->
     <div id="modal-editar" class="modal-overlay">
-        <div class="modal-dialog max-w-lg">
+        <div class="modal-dialog max-w-xl">
             <div class="modal-header-lucuma">
                 <div class="flex items-center">
                     <i class="fa-solid fa-pen-to-square text-amber-400 mr-2 text-base"></i>
@@ -201,18 +248,18 @@
                 <button id="btn-cerrar-editar" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="p-6 space-y-3">
+            <div class="p-6 space-y-4">
                 <input type="hidden" id="editar-id">
 
                 <div>
                     <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Descripción:</label>
-                    <input type="text" id="editar-descripcion" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                    <input type="text" id="editar-descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Área / Ubicación:</label>
-                        <select id="editar-ubicacion" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                        <select id="editar-ubicacion" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
                             <option value="BIOQUIMICA">BIOQUÍMICA</option>
                             <option value="HEMATOLOGIA">HEMATOLOGÍA</option>
                             <option value="MICROBIOLOGIA">MICROBIOLOGÍA</option>
@@ -222,15 +269,66 @@
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Proveedor:</label>
-                        <input type="text" id="editar-proveedor" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
+                        <input type="text" id="editar-proveedor" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs uppercase focus:outline-none focus:border-amber-500">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-4 gap-3">
-                    <div>
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Físico:</label>
-                        <input type="number" id="editar-stock-actual" min="0" class="w-full px-3 py-1.5 border border-amber-300 bg-amber-50/50 rounded-lg text-xs font-bold text-amber-900 focus:outline-none focus:border-amber-500">
+                <!-- BLOQUE EDITAR PRESENTACIÓN Y DETERMINACIONES -->
+                <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200 space-y-2">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-amber-900 uppercase mb-1">Presentación Física:</label>
+                            <select id="editar-presentacion" class="w-full px-3 py-1.5 border border-amber-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white font-semibold text-gray-800">
+                                <option value="FRASCO">FRASCO</option>
+                                <option value="KIT">KIT</option>
+                                <option value="CAJA">CAJA</option>
+                                <option value="BOTELLA">BOTELLA</option>
+                                <option value="GALON">GALÓN</option>
+                                <option value="UNIDAD">UNIDAD / OTRA</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end pb-1.5">
+                            <label class="flex items-center space-x-2 text-xs font-bold text-amber-900 cursor-pointer select-none">
+                                <input type="checkbox" id="editar-es-fraccionable" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+                                <span>¿Rinde por determinaciones?</span>
+                            </label>
+                        </div>
                     </div>
+
+                    <div id="bloque-determinaciones-editar" class="hidden grid grid-cols-2 gap-3 pt-2 border-t border-amber-200">
+                        <div>
+                            <label class="block text-[10px] font-bold text-amber-800 uppercase mb-0.5">Determinaciones por empaque:</label>
+                            <input type="number" id="editar-det-empaque" value="1" min="1" class="w-full px-3 py-1.5 border border-amber-400 rounded-lg text-xs font-bold text-amber-900 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-[11px] text-amber-800 italic">Factor multiplicador de rendimiento</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BLOQUE DE RECTIFICACIÓN DE LOTE Y FECHAS -->
+                <div class="p-3 bg-gray-50 rounded-xl border-2 border-dashed border-amber-300 space-y-3">
+                    <span class="block text-[10px] font-black tracking-wider text-amber-800 uppercase">Rectificación de Lote Actual:</span>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-800 uppercase mb-1">N° LOTE FABRICANTE:</label>
+                        <input type="text" id="editar-lote" placeholder="EJ. L241098" class="w-full px-3 py-2 border-2 border-amber-400 bg-white rounded-lg text-xs font-mono font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 uppercase">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Ingreso:</label>
+                            <input type="date" id="editar-fecha-ingreso" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Fecha de Caducidad:</label>
+                            <input type="date" id="editar-fecha-vencimiento" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ESTADO Y MÍNIMO -->
+                <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Stock Mínimo:</label>
                         <input type="number" id="editar-minimo" min="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
@@ -241,7 +339,7 @@
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Estado Catálogo:</label>
-                        <select id="editar-estado" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
+                        <select id="editar-estado" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white font-bold">
                             <option value="VIGENTE">VIGENTE</option>
                             <option value="AGOTADO">AGOTADO</option>
                         </select>
@@ -258,6 +356,77 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL 3: FICHA RESUMEN / VER DETALLES (OJITO) -->
+    <div id="modal-detalle" class="modal-overlay">
+        <div class="modal-dialog max-w-md">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-eye text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Ficha Técnica y Lote</h3>
+                </div>
+                <button id="btn-cerrar-detalle" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <span id="dt-codigo" class="px-2 py-0.5 rounded bg-gray-100 font-mono font-bold text-gray-700 text-xs">---</span>
+                    <h2 id="dt-descripcion" class="text-base font-black text-gray-900 mt-1 uppercase">---</h2>
+                    <p id="dt-ubicacion" class="text-xs text-gray-500 font-semibold uppercase">---</p>
+                </div>
+
+                <!-- TARJETA DEL LOTE Y RENDIMIENTO -->
+                <div class="p-4 bg-amber-50/80 rounded-xl border border-amber-200 space-y-3">
+                    <div class="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                        <span class="text-[11px] font-bold text-amber-900 uppercase">Lote Activo:</span>
+                        <span id="dt-lote" class="font-mono font-black text-amber-900 px-2.5 py-0.5 rounded bg-amber-200/60 text-xs">---</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span class="text-[10px] text-gray-500 font-bold uppercase block">Último Ingreso:</span>
+                            <span id="dt-ingreso" class="font-mono font-bold text-gray-800">---</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-500 font-bold uppercase block">Caducidad / Vence:</span>
+                            <span id="dt-vencimiento" class="font-mono font-bold text-gray-800">---</span>
+                        </div>
+                    </div>
+                    <!-- STOCK Y PRESENTACIÓN SEPARADOS -->
+                    <div class="pt-2 border-t border-amber-200/80 grid grid-cols-2 gap-3">
+                        <!-- 1. CAJA DE STOCK FÍSICO -->
+                        <div class="bg-white p-2.5 rounded-lg border border-amber-200 shadow-sm">
+                            <span class="text-[10px] text-gray-500 font-bold uppercase block">Stock en Almacén:</span>
+                            <p class="text-xl font-black text-amber-700 font-mono mt-0.5" id="dt-stock">0</p>
+                        </div>
+
+                        <!-- 2. CAJA DE PRESENTACIÓN / DET -->
+                        <div class="bg-white p-2.5 rounded-lg border border-amber-200 shadow-sm">
+                            <span class="text-[10px] text-gray-500 font-bold uppercase block">Presentación:</span>
+                            <p class="text-xs font-black text-gray-800 uppercase mt-1 leading-snug" id="dt-presentacion-texto">---</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- METADATOS ADICIONALES -->
+                <div class="grid grid-cols-2 gap-3 text-xs border-t border-gray-100 pt-3">
+                    <div>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase block">Proveedor:</span>
+                        <span id="dt-proveedor" class="font-semibold text-gray-700">---</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase block">Costo Ref. (S/):</span>
+                        <span id="dt-valor" class="font-semibold text-gray-700">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button id="btn-cerrar-detalle-pie" class="btn-dark px-4 py-1.5 rounded-lg text-xs font-semibold">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="../js/sweetalert2.all.min.js"></script>
     <script src="../js/sidebar.js"></script>

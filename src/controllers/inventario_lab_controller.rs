@@ -15,18 +15,24 @@ pub async fn listar_inventario(State(state): State<AppState>) -> Response {
             i.id,
             i.codigo,
             UPPER(i.descripcion) AS descripcion,
+            UPPER(COALESCE(i.presentacion, 'UNIDAD')) AS presentacion,
+            COALESCE(i.es_fraccionable, FALSE) AS es_fraccionable,
+            COALESCE(i.determinaciones_por_empaque, 1) AS determinaciones_por_empaque,
             COALESCE(SUM(l.stock_actual), 0)::BIGINT AS stock_total,
             UPPER(i.ubicacion) AS ubicacion,
             i.valor_unitario::FLOAT8 AS valor_unitario,
             UPPER(i.proveedor) AS proveedor,
             i.estado_insumo,
-            TO_CHAR(MAX(l.fecha_ingreso), 'DD/MM/YYYY') AS fecha_ingreso_reciente,
-            TO_CHAR(MIN(l.fecha_vencimiento), 'DD/MM/YYYY') AS fecha_vencimiento_proxima,
+            (SELECT l2.numero_lote FROM public.lab_lotes l2 WHERE l2.insumo_id = i.id ORDER BY l2.id DESC LIMIT 1) AS numero_lote_activo,
+            TO_CHAR(MAX(l.fecha_ingreso), 'YYYY-MM-DD') AS fecha_ingreso_reciente,
+            TO_CHAR(MIN(l.fecha_vencimiento), 'YYYY-MM-DD') AS fecha_vencimiento_proxima,
             i.stock_minimo
         FROM public.lab_insumos i
         LEFT JOIN public.lab_lotes l ON i.id = l.insumo_id AND l.stock_actual > 0
         WHERE i.estado = 1
-        GROUP BY i.id, i.codigo, i.descripcion, i.ubicacion, i.valor_unitario, i.proveedor, i.estado_insumo, i.stock_minimo
+        GROUP BY i.id, i.codigo, i.descripcion, i.presentacion, i.es_fraccionable, 
+                i.determinaciones_por_empaque, i.ubicacion, i.valor_unitario, 
+                i.proveedor, i.estado_insumo, i.stock_minimo
         ORDER BY i.descripcion ASC;
     ";
 
@@ -49,18 +55,27 @@ pub async fn listar_inventario(State(state): State<AppState>) -> Response {
     }
 }
 
-/// 2. POST: Registrar insumo maestro con lote y kárdex inicial
+/// 2. POST: Registrar insumo maestro con lote manual y stock por determinaciones
 pub async fn registrar_insumo(
     State(state): State<AppState>,
     Json(payload): Json<CrearInsumoRequest>,
 ) -> Response {
     let codigo = payload.codigo.trim().to_uppercase();
     let descripcion = payload.descripcion.trim().to_uppercase();
+    let presentacion = payload.presentacion.unwrap_or_else(|| "UNIDAD".to_string()).trim().to_uppercase();
+    let es_fraccionable = payload.es_fraccionable.unwrap_or(false);
+    let det_por_empaque = payload.determinaciones_por_empaque.unwrap_or(1).max(1);
     let ubicacion = payload.ubicacion.trim().to_uppercase();
     let proveedor = payload.proveedor.map(|p| p.trim().to_uppercase());
-    let stock_inicial = payload.stock_inicial.max(0);
+    let stock_empaques = payload.stock_inicial.max(0);
     let stock_minimo = payload.stock_minimo.unwrap_or(2);
     let f_ingreso = payload.fecha_ingreso.trim();
+
+    // Lote manual ingresado por el usuario
+    let lote_manual = payload.numero_lote
+        .map(|l| l.trim().to_uppercase())
+        .filter(|l| !l.is_empty())
+        .unwrap_or_else(|| "LOTE-INICIAL".to_string());
 
     // 1. Validación de coherencia de fechas en backend
     if let Some(ref f_venc) = payload.fecha_vencimiento {
@@ -76,7 +91,6 @@ pub async fn registrar_insumo(
         }
     }
 
-    // 2. Determinar el usuario que registra para llenar alias_registro
     let usuario_firmante = payload
         .alias_registro
         .as_deref()
@@ -95,14 +109,18 @@ pub async fn registrar_insumo(
         }
     };
 
-    // 3. Inserción del Insumo Maestro (guardando el usuario en alias_registro)
+    // 2. Inserción del Insumo Maestro con los nuevos atributos
     let insumo_id = match sqlx::query_scalar::<_, i32>(
         "INSERT INTO public.lab_insumos 
-         (codigo, descripcion, ubicacion, valor_unitario, proveedor, stock_minimo, alias_registro) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;"
+         (codigo, descripcion, presentacion, es_fraccionable, determinaciones_por_empaque, 
+          ubicacion, valor_unitario, proveedor, stock_minimo, alias_registro) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id;"
     )
     .bind(&codigo)
     .bind(&descripcion)
+    .bind(&presentacion)
+    .bind(es_fraccionable)
+    .bind(det_por_empaque)
     .bind(&ubicacion)
     .bind(payload.valor_unitario)
     .bind(&proveedor)
@@ -121,19 +139,23 @@ pub async fn registrar_insumo(
         }
     };
 
-    // 4. Si tiene stock inicial, registrar Lote y Movimiento en el Kárdex
-    if stock_inicial > 0 {
-        let num_lote = format!("HIST-{}", f_ingreso.replace("-", ""));
+    // 3. Si hay stock inicial, calcular determinaciones e insertar lote manual y kárdex
+    if stock_empaques > 0 {
+        let stock_calculado = if es_fraccionable {
+            stock_empaques * det_por_empaque
+        } else {
+            stock_empaques
+        };
 
         let lote_id = match sqlx::query_scalar::<_, i32>(
             "INSERT INTO public.lab_lotes (insumo_id, numero_lote, fecha_ingreso, fecha_vencimiento, stock_actual) 
              VALUES ($1, $2, $3::DATE, NULLIF($4, '')::DATE, $5) RETURNING id;"
         )
         .bind(insumo_id)
-        .bind(&num_lote)
+        .bind(&lote_manual)
         .bind(f_ingreso)
         .bind(&payload.fecha_vencimiento)
-        .bind(stock_inicial)
+        .bind(stock_calculado)
         .fetch_one(&mut *tx)
         .await {
             Ok(id) => id,
@@ -154,7 +176,7 @@ pub async fn registrar_insumo(
         )
         .bind(insumo_id)
         .bind(lote_id)
-        .bind(stock_inicial)
+        .bind(stock_calculado)
         .bind(&usuario_firmante)
         .execute(&mut *tx)
         .await;
@@ -169,7 +191,6 @@ pub async fn registrar_insumo(
         }
     }
 
-    // 5. Confirmar transacción
     if let Err(err) = tx.commit().await {
         eprintln!("❌ Error en commit: {:?}", err);
         return (
@@ -187,46 +208,113 @@ pub async fn registrar_insumo(
     ).into_response()
 }
 
-/// 3. PUT: Actualizar datos de un insumo existente
+/// 3. PUT: Actualizar datos de un insumo existente (incluye presentación y determinaciones)
 pub async fn actualizar_insumo(
     State(state): State<AppState>,
     Path(id): Path<i32>,
     Json(payload): Json<ActualizarInsumoRequest>,
 ) -> Response {
     let descripcion = payload.descripcion.trim().to_uppercase();
+    let presentacion = payload.presentacion.unwrap_or_else(|| "UNIDAD".to_string()).trim().to_uppercase();
+    let es_fraccionable = payload.es_fraccionable.unwrap_or(false);
+    let det_por_empaque = payload.determinaciones_por_empaque.unwrap_or(1).max(1);
     let ubicacion = payload.ubicacion.trim().to_uppercase();
     let proveedor = payload.proveedor.map(|p| p.trim().to_uppercase());
     let estado_insumo = payload.estado_insumo.trim().to_uppercase();
 
-    let query = "
+    let mut tx = match state.db_auth.begin().await {
+        Ok(t) => t,
+        Err(err) => {
+            eprintln!("❌ Error iniciando transacción: {:?}", err);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "error", "message": "Error al conectar con la base de datos"})),
+            ).into_response();
+        }
+    };
+
+    // 1. Actualizar Ficha Maestra del Insumo
+    let query_insumo = "
         UPDATE public.lab_insumos 
-        SET descripcion = $1, ubicacion = $2, valor_unitario = $3, proveedor = $4, stock_minimo = $5, estado_insumo = $6
-        WHERE id = $7 AND estado = 1;
+        SET descripcion = $1, presentacion = $2, es_fraccionable = $3, 
+            determinaciones_por_empaque = $4, ubicacion = $5, valor_unitario = $6, 
+            proveedor = $7, stock_minimo = $8, estado_insumo = $9
+        WHERE id = $10 AND estado = 1;
     ";
 
-    match sqlx::query(query)
+    let res_insumo = sqlx::query(query_insumo)
         .bind(&descripcion)
+        .bind(&presentacion)
+        .bind(es_fraccionable)
+        .bind(det_por_empaque)
         .bind(&ubicacion)
         .bind(payload.valor_unitario)
         .bind(&proveedor)
         .bind(payload.stock_minimo)
         .bind(&estado_insumo)
         .bind(id)
-        .execute(&state.db_auth)
-        .await
-    {
-        Ok(res) if res.rows_affected() > 0 => (
-            StatusCode::OK,
-            Json(json!({"status": "success", "message": "Insumo actualizado exitosamente."})),
-        ).into_response(),
-        _ => (
-            StatusCode::NOT_FOUND,
-            Json(json!({"status": "error", "message": "Insumo no encontrado."})),
-        ).into_response(),
-    }
-}
+        .execute(&mut *tx)
+        .await;
 
-/// 4. DELETE: Borrado total en cascada atómica (movimientos/salidas -> lotes -> insumo)
+    match res_insumo {
+        Ok(res) if res.rows_affected() > 0 => {},
+        _ => {
+            let _ = tx.rollback().await;
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"status": "error", "message": "Insumo no encontrado."})),
+            ).into_response();
+        }
+    };
+
+    // 2. Rectificar Lote Activo (Lote manual, Fecha de Ingreso y Caducidad)
+    if let Some(ref lote) = payload.numero_lote {
+        let lote_limpio = lote.trim().to_uppercase();
+        if !lote_limpio.is_empty() {
+            let query_lote = "
+                UPDATE public.lab_lotes 
+                SET numero_lote = $1, 
+                    fecha_ingreso = COALESCE(NULLIF($2, '')::DATE, fecha_ingreso), 
+                    fecha_vencimiento = NULLIF($3, '')::DATE 
+                WHERE id = (
+                    SELECT id FROM public.lab_lotes 
+                    WHERE insumo_id = $4 
+                    ORDER BY id DESC LIMIT 1
+                );
+            ";
+
+            if let Err(e) = sqlx::query(query_lote)
+                .bind(&lote_limpio)
+                .bind(&payload.fecha_ingreso)
+                .bind(&payload.fecha_vencimiento)
+                .bind(id)
+                .execute(&mut *tx)
+                .await
+            {
+                eprintln!("❌ Error actualizando lote asociado: {:?}", e);
+                let _ = tx.rollback().await;
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"status": "error", "message": "Error al actualizar los datos del lote"})),
+                ).into_response();
+            }
+        }
+    }
+
+    if let Err(err) = tx.commit().await {
+        eprintln!("❌ Error en commit: {:?}", err);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"status": "error", "message": "No se pudo confirmar la actualización"})),
+        ).into_response();
+    }
+
+    (
+        StatusCode::OK,
+        Json(json!({"status": "success", "message": "Insumo y lote actualizados exitosamente."})),
+    ).into_response()
+}
+/// 4. DELETE: Borrado total en cascada atómica
 pub async fn eliminar_insumo(
     State(state): State<AppState>,
     Path(id): Path<i32>,
@@ -242,7 +330,6 @@ pub async fn eliminar_insumo(
         }
     };
 
-    // 1. Eliminar TODOS los movimientos del insumo (tanto INGRESOS como SALIDAS)
     if let Err(e) = sqlx::query("DELETE FROM public.lab_movimientos WHERE insumo_id = $1;")
         .bind(id)
         .execute(&mut *tx)
@@ -256,7 +343,6 @@ pub async fn eliminar_insumo(
         ).into_response();
     }
 
-    // 2. Eliminar TODOS los lotes asociados al insumo
     if let Err(e) = sqlx::query("DELETE FROM public.lab_lotes WHERE insumo_id = $1;")
         .bind(id)
         .execute(&mut *tx)
@@ -270,7 +356,6 @@ pub async fn eliminar_insumo(
         ).into_response();
     }
 
-    // 3. Eliminar el insumo maestro
     let res_insumo = sqlx::query("DELETE FROM public.lab_insumos WHERE id = $1;")
         .bind(id)
         .execute(&mut *tx)
@@ -290,7 +375,7 @@ pub async fn eliminar_insumo(
                 StatusCode::OK,
                 Json(json!({
                     "status": "success",
-                    "message": "Insumo, lotes y todo su historial de ingresos y salidas fueron eliminados completamente."
+                    "message": "Insumo y sus registros eliminados completamente."
                 })),
             ).into_response()
         }

@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -7,8 +7,8 @@ use axum::{
 use serde::Deserialize;
 use serde_json::json;
 use crate::models::movimientos_lab::{
-    IngresoLabRecord, InsumoSelectorRecord, PersonalAutocompletadoRecord, RegistrarIngresoRequest,
-    RegistrarSalidaRequest, SalidaLabRecord,
+    EditarSalidaRequest, IngresoLabRecord, InsumoSelectorRecord, PersonalAutocompletadoRecord,
+    RegistrarIngresoRequest, RegistrarSalidaRequest, SalidaLabRecord,
 };
 use crate::config::AppState;
 
@@ -24,7 +24,7 @@ pub struct BuscarParams {
     pub q: Option<String>,
 }
 
-/// 1. GET: Bandeja de Salidas con filtro de fechas y buscador
+/// 1. GET: Bandeja de Salidas
 pub async fn listar_salidas(
     State(state): State<AppState>,
     Query(params): Query<FiltroFechasParams>,
@@ -40,6 +40,8 @@ pub async fn listar_salidas(
             i.codigo AS insumo_codigo,
             UPPER(i.descripcion) AS insumo_descripcion,
             m.cantidad,
+            COALESCE(m.tipo_despacho, 'UNIDAD') AS tipo_despacho,
+            COALESCE(m.determinaciones_movidas, 0) AS determinaciones_movidas,
             UPPER(m.personal_nombre) AS personal_nombre,
             COALESCE(m.personal_dni, '---') AS personal_dni,
             UPPER(COALESCE(m.personal_area, '---')) AS personal_area,
@@ -62,13 +64,13 @@ pub async fn listar_salidas(
     {
         Ok(data) => (StatusCode::OK, Json(json!({"status": "success", "total": data.len(), "data": data}))).into_response(),
         Err(err) => {
-            eprintln!("❌ Error listando salidas: {:?}", err);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": "Error al consultar salidas"}))).into_response()
+            eprintln!("❌ Error SQL en listar_salidas: {:?}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": format!("Error SQL: {:?}", err)}))).into_response()
         }
     }
 }
 
-/// 2. GET: Bandeja de Ingresos / Remesas con filtro de fechas
+/// 2. GET: Bandeja de Ingresos
 pub async fn listar_ingresos(
     State(state): State<AppState>,
     Query(params): Query<FiltroFechasParams>,
@@ -112,7 +114,7 @@ pub async fn listar_ingresos(
     }
 }
 
-/// 3. POST: Procesar Salida con descuento FEFO atómico
+/// 3. POST: Procesar Salida con lógica de fraccionamiento FEFO
 pub async fn registrar_salida(
     State(state): State<AppState>,
     Json(payload): Json<RegistrarSalidaRequest>,
@@ -126,29 +128,28 @@ pub async fn registrar_salida(
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": "Error al iniciar transacción"}))).into_response(),
     };
 
-    let stock_total: i64 = match sqlx::query_scalar(
-        "SELECT COALESCE(SUM(stock_actual), 0)::BIGINT FROM public.lab_lotes WHERE insumo_id = $1 AND stock_actual > 0;"
+    // Obtener información maestra del insumo
+    let insumo_info: Option<(bool, i32)> = sqlx::query_as(
+        "SELECT es_fraccionable, COALESCE(determinaciones_por_empaque, 1) FROM public.lab_insumos WHERE id = $1;"
     )
     .bind(payload.insumo_id)
-    .fetch_one(&mut *tx)
-    .await {
-        Ok(s) => s,
-        Err(_) => return (StatusCode::NOT_FOUND, Json(json!({"status": "error", "message": "Insumo no encontrado"}))).into_response(),
+    .fetch_optional(&mut *tx)
+    .await
+    .unwrap_or(None);
+
+    let (es_fraccionable, factor_det) = match insumo_info {
+        Some(info) => info,
+        None => return (StatusCode::NOT_FOUND, Json(json!({"status": "error", "message": "Insumo no encontrado"}))).into_response(),
     };
 
-    if stock_total < payload.cantidad as i64 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({
-                "status": "error", 
-                "message": format!("Stock insuficiente. Disponible: {}, solicitado: {}", stock_total, payload.cantidad)
-            })),
-        ).into_response();
-    }
+    let tipo_despacho = payload.tipo_despacho.unwrap_or_else(|| {
+        if es_fraccionable { "FRACCION_DET".to_string() } else { "UNIDAD".to_string() }
+    });
 
-    // FEFO: Descontar primero del lote que venza antes
-    let lotes_disponibles = sqlx::query_as::<_, (i32, i32)>(
-        "SELECT id, stock_actual FROM public.lab_lotes 
+    // Lotes disponibles ordenados por FEFO
+    let lotes = sqlx::query_as::<_, (i32, i32, i32, i32)>(
+        "SELECT id, stock_actual, COALESCE(empaques_enteros, 0), COALESCE(determinaciones_abiertas, 0)
+         FROM public.lab_lotes 
          WHERE insumo_id = $1 AND stock_actual > 0 
          ORDER BY fecha_vencimiento ASC NULLS LAST, id ASC;"
     )
@@ -157,51 +158,161 @@ pub async fn registrar_salida(
     .await
     .unwrap_or_default();
 
-    let mut por_descontar = payload.cantidad;
-    for (lote_id, stock_lote) in lotes_disponibles {
-        if por_descontar <= 0 { break; }
+    if lotes.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(json!({"status": "error", "message": "No hay stock disponible para este reactivo"}))).into_response();
+    }
 
-        let rebajar = por_descontar.min(stock_lote);
-        let nuevo_stock = stock_lote - rebajar;
+    if es_fraccionable && tipo_despacho == "FRACCION_DET" {
+        // Despacho por determinaciones sueltas
+        let mut det_por_descontar = payload.cantidad;
 
-        let _ = sqlx::query("UPDATE public.lab_lotes SET stock_actual = $1 WHERE id = $2;")
-            .bind(nuevo_stock)
+        // Comprobación de capacidad total
+        let total_det_disponible: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM((COALESCE(empaques_enteros, 0) * $2) + COALESCE(determinaciones_abiertas, stock_actual)), 0)::BIGINT 
+             FROM public.lab_lotes WHERE insumo_id = $1 AND stock_actual > 0;"
+        )
+        .bind(payload.insumo_id)
+        .bind(factor_det)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
+
+        if (det_por_descontar as i64) > total_det_disponible {
+            return (StatusCode::BAD_REQUEST, Json(json!({
+                "status": "error",
+                "message": format!("Determinaciones insuficientes. Disponibles: {}, solicitadas: {}", total_det_disponible, det_por_descontar)
+            }))).into_response();
+        }
+
+        for (lote_id, mut stock_actual, mut empaques, mut abiertas) in lotes {
+            if det_por_descontar <= 0 { break; }
+
+            // Si los campos de fraccionamiento no se habían sincronizado en la fila
+            if empaques == 0 && abiertas == 0 && stock_actual > 0 {
+                empaques = stock_actual;
+            }
+
+            while det_por_descontar > 0 && (abiertas > 0 || empaques > 0) {
+                if abiertas == 0 && empaques > 0 {
+                    // Abrir un frasco cerrado
+                    empaques -= 1;
+                    abiertas = factor_det;
+                }
+
+                let restar = det_por_descontar.min(abiertas);
+                abiertas -= restar;
+                det_por_descontar -= restar;
+            }
+
+            stock_actual = empaques + (if abiertas > 0 { 1 } else { 0 });
+
+            let _ = sqlx::query(
+                "UPDATE public.lab_lotes 
+                 SET stock_actual = $1, empaques_enteros = $2, determinaciones_abiertas = $3 
+                 WHERE id = $4;"
+            )
+            .bind(stock_actual)
+            .bind(empaques)
+            .bind(abiertas)
             .bind(lote_id)
             .execute(&mut *tx)
             .await;
 
-        let _ = sqlx::query(
-            "INSERT INTO public.lab_movimientos 
-             (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, personal_dni, personal_nombre, personal_area, personal_cargo, usuario_registro) 
-             VALUES ($1, $2, 'SALIDA', $3, $4, $5, $6, $7, $8, $9, $10);"
+            let _ = sqlx::query(
+                "INSERT INTO public.lab_movimientos 
+                 (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, 
+                  personal_dni, personal_nombre, personal_area, personal_cargo, usuario_registro, tipo_despacho, determinaciones_movidas) 
+                 VALUES ($1, $2, 'SALIDA', $3, $4, $5, $6, $7, $8, $9, $10, 'FRACCION_DET', $11);"
+            )
+            .bind(payload.insumo_id)
+            .bind(lote_id)
+            .bind(payload.cantidad)
+            .bind(stock_actual + 1)
+            .bind(stock_actual)
+            .bind(payload.personal_dni.trim())
+            .bind(payload.personal_nombre.trim().to_uppercase())
+            .bind(payload.personal_area.trim().to_uppercase())
+            .bind(payload.personal_cargo.trim().to_uppercase())
+            .bind(payload.usuario_registro.trim().to_uppercase())
+            .bind(payload.cantidad)
+            .execute(&mut *tx)
+            .await;
+        }
+    } else {
+        // Despacho directo de empaques enteros o unidades simples
+        let mut cant_por_descontar = payload.cantidad;
+        let stock_total_empaques: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(COALESCE(empaques_enteros, stock_actual)), 0)::BIGINT FROM public.lab_lotes WHERE insumo_id = $1 AND stock_actual > 0;"
         )
         .bind(payload.insumo_id)
-        .bind(lote_id)
-        .bind(rebajar)
-        .bind(stock_lote)
-        .bind(nuevo_stock)
-        .bind(payload.personal_dni.trim())
-        .bind(payload.personal_nombre.trim().to_uppercase())
-        .bind(payload.personal_area.trim().to_uppercase())
-        .bind(payload.personal_cargo.trim().to_uppercase())
-        .bind(payload.usuario_registro.trim().to_uppercase())
-        .execute(&mut *tx)
-        .await;
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap_or(0);
 
-        por_descontar -= rebajar;
+        if (cant_por_descontar as i64) > stock_total_empaques {
+            return (StatusCode::BAD_REQUEST, Json(json!({
+                "status": "error",
+                "message": format!("Stock insuficiente. Disponible: {}, solicitado: {}", stock_total_empaques, cant_por_descontar)
+            }))).into_response();
+        }
+
+        for (lote_id, stock_lote, mut empaques, abiertas) in lotes {
+            if cant_por_descontar <= 0 { break; }
+
+            if empaques == 0 && abiertas == 0 {
+                empaques = stock_lote;
+            }
+
+            let restar = cant_por_descontar.min(empaques);
+            empaques -= restar;
+            let nuevo_stock = empaques + (if abiertas > 0 { 1 } else { 0 });
+
+            let _ = sqlx::query(
+                "UPDATE public.lab_lotes 
+                 SET stock_actual = $1, empaques_enteros = $2 
+                 WHERE id = $3;"
+            )
+            .bind(nuevo_stock)
+            .bind(empaques)
+            .bind(lote_id)
+            .execute(&mut *tx)
+            .await;
+
+            let _ = sqlx::query(
+                "INSERT INTO public.lab_movimientos 
+                 (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, 
+                  personal_dni, personal_nombre, personal_area, personal_cargo, usuario_registro, tipo_despacho, determinaciones_movidas) 
+                 VALUES ($1, $2, 'SALIDA', $3, $4, $5, $6, $7, $8, $9, $10, 'EMPAQUE_COMPLETO', 0);"
+            )
+            .bind(payload.insumo_id)
+            .bind(lote_id)
+            .bind(restar)
+            .bind(stock_lote)
+            .bind(nuevo_stock)
+            .bind(payload.personal_dni.trim())
+            .bind(payload.personal_nombre.trim().to_uppercase())
+            .bind(payload.personal_area.trim().to_uppercase())
+            .bind(payload.personal_cargo.trim().to_uppercase())
+            .bind(payload.usuario_registro.trim().to_uppercase())
+            .execute(&mut *tx)
+            .await;
+
+            cant_por_descontar -= restar;
+        }
     }
 
-    if let Err(_) = tx.commit().await {
+    if let Err(e) = tx.commit().await {
+        eprintln!("❌ Error en commit de salida: {:?}", e);
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": "Error al confirmar la salida"}))).into_response();
     }
 
     (
         StatusCode::OK,
-        Json(json!({"status": "success", "message": format!("Despacho de {} unidad(es) registrado correctamente.", payload.cantidad)})),
+        Json(json!({"status": "success", "message": format!("Despacho de {} registrado correctamente.", payload.cantidad)})),
     ).into_response()
 }
 
-/// 4. POST: Registrar nuevo ingreso / lote de un insumo existente
+/// 4. POST: Registrar ingreso / remesa
 pub async fn registrar_ingreso(
     State(state): State<AppState>,
     Json(payload): Json<RegistrarIngresoRequest>,
@@ -228,9 +339,11 @@ pub async fn registrar_ingreso(
 
     let num_lote = payload.numero_lote.trim().to_uppercase();
 
+    // El ingreso siempre registra empaques enteros limpios
     let lote_id = match sqlx::query_scalar::<_, i32>(
-        "INSERT INTO public.lab_lotes (insumo_id, numero_lote, fecha_ingreso, fecha_vencimiento, stock_actual) 
-         VALUES ($1, $2, $3::DATE, NULLIF($4, '')::DATE, $5) RETURNING id;"
+        "INSERT INTO public.lab_lotes 
+         (insumo_id, numero_lote, fecha_ingreso, fecha_vencimiento, stock_actual, empaques_enteros, determinaciones_abiertas) 
+         VALUES ($1, $2, $3::DATE, NULLIF($4, '')::DATE, $5, $5, 0) RETURNING id;"
     )
     .bind(payload.insumo_id)
     .bind(&num_lote)
@@ -248,8 +361,8 @@ pub async fn registrar_ingreso(
 
     let _ = sqlx::query(
         "INSERT INTO public.lab_movimientos 
-         (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, usuario_registro) 
-         VALUES ($1, $2, 'INGRESO', $3, 0, $3, $4);"
+         (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, usuario_registro, tipo_despacho, determinaciones_movidas) 
+         VALUES ($1, $2, 'INGRESO', $3, 0, $3, $4, 'EMPAQUE_COMPLETO', 0);"
     )
     .bind(payload.insumo_id)
     .bind(lote_id)
@@ -264,11 +377,11 @@ pub async fn registrar_ingreso(
 
     (
         StatusCode::CREATED,
-        Json(json!({"status": "success", "message": format!("Ingreso de {} unidad(es) registrado bajo el lote '{}'.", payload.cantidad, num_lote)})),
+        Json(json!({"status": "success", "message": format!("Ingreso de {} registrado bajo el lote '{}'.", payload.cantidad, num_lote)})),
     ).into_response()
 }
 
-/// 5. GET: Autocompletar personal desde public.lab_personal
+/// 5. GET: Autocompletar personal
 pub async fn autocompletar_personal(
     State(state): State<AppState>,
     Query(params): Query<BuscarParams>,
@@ -292,31 +405,39 @@ pub async fn autocompletar_personal(
     }
 }
 
-/// 6. GET: Selector de reactivos para llenar selects de los modales
+/// 6. GET: Selector con desglose de empaques y determinaciones abiertas
 pub async fn selector_insumos_activos(State(state): State<AppState>) -> Response {
     let query = "
         SELECT 
             i.id,
             i.codigo,
             UPPER(i.descripcion) AS descripcion,
+            UPPER(COALESCE(i.presentacion, 'UNIDAD')) AS presentacion,
+            COALESCE(i.es_fraccionable, FALSE) AS es_fraccionable,
+            COALESCE(i.determinaciones_por_empaque, 1) AS determinaciones_por_empaque,
+            COALESCE(SUM(COALESCE(l.empaques_enteros, l.stock_actual)), 0)::BIGINT AS empaques_disponibles,
+            COALESCE(SUM(COALESCE(l.determinaciones_abiertas, 0)), 0)::BIGINT AS det_abiertas_disponibles,
             COALESCE(SUM(l.stock_actual), 0)::BIGINT AS stock_disponible
         FROM public.lab_insumos i
         LEFT JOIN public.lab_lotes l ON i.id = l.insumo_id AND l.stock_actual > 0
         WHERE i.estado = 1
-        GROUP BY i.id, i.codigo, i.descripcion
+        GROUP BY i.id, i.codigo, i.descripcion, i.presentacion, i.es_fraccionable, i.determinaciones_por_empaque
         ORDER BY i.descripcion ASC;
     ";
 
     match sqlx::query_as::<_, InsumoSelectorRecord>(query).fetch_all(&state.db_auth).await {
         Ok(lista) => (StatusCode::OK, Json(json!({"status": "success", "data": lista}))).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": "Error al cargar reactivos"}))).into_response(),
+        Err(err) => {
+            eprintln!("❌ Error SQL en selector_insumos_activos: {:?}", err);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": format!("Error SQL: {:?}", err)}))).into_response()
+        }
     }
 }
 
-/// 7. DELETE: Anular salida y retornar stock al lote
+/// 7. DELETE: Anular salida y retornar stock
 pub async fn anular_salida(
     State(state): State<AppState>,
-    axum::extract::Path(id): axum::extract::Path<i64>,
+    Path(id): Path<i64>,
 ) -> Response {
     let mut tx = match state.db_auth.begin().await {
         Ok(t) => t,
@@ -326,9 +447,9 @@ pub async fn anular_salida(
         ).into_response(),
     };
 
-    // Obtener los datos del movimiento de salida
-    let mov = match sqlx::query_as::<_, (i32, Option<i32>, i32)>(
-        "SELECT insumo_id, lote_id, cantidad FROM public.lab_movimientos WHERE id = $1 AND tipo = 'SALIDA';"
+    let mov = match sqlx::query_as::<_, (i32, Option<i32>, i32, Option<String>, Option<i32>)>(
+        "SELECT insumo_id, lote_id, cantidad, tipo_despacho, determinaciones_movidas 
+         FROM public.lab_movimientos WHERE id = $1 AND tipo = 'SALIDA';"
     )
     .bind(id)
     .fetch_optional(&mut *tx)
@@ -336,130 +457,78 @@ pub async fn anular_salida(
         Ok(Some(m)) => m,
         _ => return (
             StatusCode::NOT_FOUND,
-            Json(json!({"status": "error", "message": "Movimiento de salida no encontrado"})),
+            Json(json!({"status": "error", "message": "Movimiento no encontrado"})),
         ).into_response(),
     };
 
-    let (_insumo_id, lote_id_opt, cantidad) = mov;
+    let (_insumo_id, lote_id_opt, cantidad, tipo_despacho_opt, det_movidas_opt) = mov;
+    let tipo_despacho = tipo_despacho_opt.unwrap_or_else(|| "UNIDAD".to_string());
 
-    // Restaurar el stock en el lote de procedencia
     if let Some(lote_id) = lote_id_opt {
-        let _ = sqlx::query("UPDATE public.lab_lotes SET stock_actual = stock_actual + $1 WHERE id = $2;")
+        if tipo_despacho == "FRACCION_DET" {
+            let det_a_devolver = det_movidas_opt.unwrap_or(cantidad);
+            let _ = sqlx::query(
+                "UPDATE public.lab_lotes 
+                 SET determinaciones_abiertas = determinaciones_abiertas + $1 
+                 WHERE id = $2;"
+            )
+            .bind(det_a_devolver)
+            .bind(lote_id)
+            .execute(&mut *tx)
+            .await;
+        } else {
+            let _ = sqlx::query(
+                "UPDATE public.lab_lotes 
+                 SET empaques_enteros = empaques_enteros + $1, stock_actual = stock_actual + $1 
+                 WHERE id = $2;"
+            )
             .bind(cantidad)
             .bind(lote_id)
             .execute(&mut *tx)
             .await;
+        }
     }
 
-    // Eliminar el registro del movimiento de salida
     let _ = sqlx::query("DELETE FROM public.lab_movimientos WHERE id = $1;").bind(id).execute(&mut *tx).await;
 
     if let Err(_) = tx.commit().await {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "error", "message": "Error al confirmar reversión de stock"})),
-        ).into_response();
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "error", "message": "Error al confirmar anulación"}))).into_response();
     }
 
     (
         StatusCode::OK,
-        Json(json!({
-            "status": "success", 
-            "message": format!("Salida anulada. Se han reintegrado {} unidad(es) al stock.", cantidad)
-        })),
+        Json(json!({"status": "success", "message": "Salida anulada y stock reintegrado con éxito."})),
     ).into_response()
 }
 
-use crate::models::movimientos_lab::EditarSalidaRequest;
-
-/// 8. PUT: Actualizar personal y/o ajustar cantidad de la salida
+/// 8. PUT: Actualizar personal receptor
 pub async fn actualizar_salida(
     State(state): State<AppState>,
-    axum::extract::Path(id): axum::extract::Path<i64>,
+    Path(id): Path<i64>,
     Json(payload): Json<EditarSalidaRequest>,
 ) -> Response {
-    if payload.cantidad_nueva <= 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "La cantidad debe ser mayor a 0"})),
-        ).into_response();
-    }
-
-    let mut tx = match state.db_auth.begin().await {
-        Ok(t) => t,
-        Err(_) => return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "error", "message": "Error al iniciar transacción"})),
-        ).into_response(),
-    };
-
-    let mov = match sqlx::query_as::<_, (i32, Option<i32>, i32)>(
-        "SELECT insumo_id, lote_id, cantidad FROM public.lab_movimientos WHERE id = $1 AND tipo = 'SALIDA';"
-    )
-    .bind(id)
-    .fetch_optional(&mut *tx)
-    .await {
-        Ok(Some(m)) => m,
-        _ => return (
-            StatusCode::NOT_FOUND,
-            Json(json!({"status": "error", "message": "Salida no encontrada"})),
-        ).into_response(),
-    };
-
-    let (_insumo_id, lote_id_opt, cantidad_anterior) = mov;
-    let diferencia = payload.cantidad_nueva - cantidad_anterior; // Si es positivo se sacó más; si es negativo se devuelve stock
-
-    if let Some(lote_id) = lote_id_opt {
-        if diferencia > 0 {
-            // Verificar si el lote tiene stock suficiente para el incremento
-            let stock_lote: i32 = sqlx::query_scalar("SELECT stock_actual FROM public.lab_lotes WHERE id = $1;")
-                .bind(lote_id)
-                .fetch_one(&mut *tx)
-                .await
-                .unwrap_or(0);
-
-            if stock_lote < diferencia {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({"status": "error", "message": format!("Stock insuficiente para incrementar salida. Disponible en lote: {}", stock_lote)})),
-                ).into_response();
-            }
-        }
-
-        // Ajustar el stock en el lote
-        let _ = sqlx::query("UPDATE public.lab_lotes SET stock_actual = stock_actual - $1 WHERE id = $2;")
-            .bind(diferencia)
-            .bind(lote_id)
-            .execute(&mut *tx)
-            .await;
-    }
-
-    // Actualizar registro de salida
     let query_upd = "
         UPDATE public.lab_movimientos 
-        SET cantidad = $1, personal_dni = $2, personal_nombre = $3, personal_area = $4, personal_cargo = $5
-        WHERE id = $6;
+        SET personal_dni = $1, personal_nombre = $2, personal_area = $3, personal_cargo = $5
+        WHERE id = $4;
     ";
 
-    let _ = sqlx::query(query_upd)
-        .bind(payload.cantidad_nueva)
+    match sqlx::query(query_upd)
         .bind(payload.personal_dni.trim())
         .bind(payload.personal_nombre.trim().to_uppercase())
         .bind(payload.personal_area.trim().to_uppercase())
-        .bind(payload.personal_cargo.trim().to_uppercase())
         .bind(id)
-        .execute(&mut *tx)
-        .await;
-
-    if let Err(_) = tx.commit().await {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "error", "message": "Error al confirmar actualización"})),
-        ).into_response();
+        .bind(payload.personal_cargo.trim().to_uppercase())
+        .execute(&state.db_auth)
+        .await
+    {
+        Ok(res) if res.rows_affected() > 0 => (
+            StatusCode::OK,
+            Json(json!({"status": "success", "message": "Datos de salida actualizados correctamente."})),
+        ).into_response(),
+        _ => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"status": "error", "message": "Salida no encontrada."})),
+        ).into_response(),
     }
-
-    (
-        StatusCode::OK,
-        Json(json!({"status": "success", "message": "Salida actualizada correctamente."})),
-    ).into_response()
 }

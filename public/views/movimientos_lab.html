@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="../css/tailwind.min.css">
     <link rel="stylesheet" href="../css/all.min.css">
     <link rel="stylesheet" href="../css/telesalud.css">
+    <style>
+        .autocomplete-active {
+            background-color: #fef3c7 !important;
+            border-left: 4px solid #d97706 !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans antialiased text-gray-800">
 
@@ -14,7 +20,6 @@
         <div id="sidebar-container"></div>
 
         <div class="flex-1 flex flex-col overflow-y-auto">
-            
             <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 border-b border-gray-200">
                 <div class="flex items-center space-x-3">
                     <span class="p-2 rounded-lg bg-amber-50 text-amber-600"><i class="fa-solid fa-arrow-right-arrow-left text-lg"></i></span>
@@ -26,8 +31,7 @@
             </header>
 
             <main class="p-8 space-y-6">
-
-                <!-- FILTROS GLOBALES SUPERIORES -->
+                <!-- FILTROS GLOBALES -->
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div class="md:col-span-1">
@@ -56,9 +60,8 @@
                     </div>
                 </div>
 
-                <!-- TABS Y BANDEJA PRINCIPAL -->
+                <!-- BANDEJA PRINCIPAL -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    
                     <div class="px-6 pt-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div class="flex space-x-6 text-xs font-bold">
                             <button id="tab-btn-salidas" class="pb-3 border-b-2 border-amber-500 text-amber-700 flex items-center space-x-2 transition">
@@ -83,7 +86,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 1: SALIDAS / DESPACHOS -->
+                    <!-- TAB 1: SALIDAS -->
                     <div id="seccion-salidas" class="overflow-x-auto">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
@@ -91,7 +94,7 @@
                                     <th class="py-3 px-4">Fecha / Hora</th>
                                     <th class="py-3 px-4">Código</th>
                                     <th class="py-3 px-4">Descripción del Insumo</th>
-                                    <th class="py-3 px-4 text-center">Cant.</th>
+                                    <th class="py-3 px-4 text-center">Cant. Despachada</th>
                                     <th class="py-3 px-4">Personal Receptor</th>
                                     <th class="py-3 px-4">DNI</th>
                                     <th class="py-3 px-4">Área / Destino</th>
@@ -106,7 +109,7 @@
                         </table>
                     </div>
 
-                    <!-- TAB 2: INGRESOS / REMESAS -->
+                    <!-- TAB 2: INGRESOS -->
                     <div id="seccion-ingresos" class="overflow-x-auto hidden">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
@@ -132,14 +135,12 @@
                         <div class="flex items-center space-x-1.5" id="controles-paginacion"></div>
                     </div>
                 </div>
-
             </main>
-
             <div id="footer-container"></div>
         </div>
     </div>
 
-    <!-- MODAL NUEVA SALIDA -->
+    <!-- MODAL NUEVA SALIDA CON AUTOCOMPLETADO Y FRACCIONAMIENTO -->
     <div id="modal-salida" class="modal-overlay">
         <div class="modal-dialog max-w-lg">
             <div class="modal-header-lucuma">
@@ -151,29 +152,53 @@
             </div>
 
             <div class="p-6 space-y-4">
+                <!-- AUTOCOMPLETE INSUMO -->
                 <div>
-                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Insumo a Despachar:</label>
-                    <select id="sal-insumo-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
-                        <option value="">Cargando catálogo...</option>
-                    </select>
-                    <p class="text-[11px] text-gray-500 mt-1">Stock Físico Disponible: <span class="font-bold text-green-700 font-mono" id="sal-stock-disp">0</span></p>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad para Salida:</label>
-                    <input type="number" id="sal-cantidad" min="1" value="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-amber-700 focus:outline-none focus:border-amber-500">
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Personal Receptor (DNI, Nombre o Alias):</label>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Insumo a Despachar (Código o Nombre):</label>
                     <div class="relative">
-                        <input type="text" id="sal-buscar-personal" placeholder="Ej. YASER, 71418005 o ALZAMORA..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
-                        <div id="sal-sugerencias-personal" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto hidden"></div>
+                        <input type="text" id="sal-buscar-insumo" autocomplete="off" placeholder="Escriba código o descripción..." class="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-xs font-bold text-gray-800 focus:outline-none focus:border-amber-500">
+                        <input type="hidden" id="sal-insumo-id">
+                        <div id="sal-sugerencias-insumo" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto hidden"></div>
+                    </div>
+                    
+                    <!-- TARJETA DE ESTADO DISPONIBLE -->
+                    <div id="sal-caja-disponible" class="hidden mt-2 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs">
+                        <span class="text-[10px] font-bold text-amber-900 uppercase block mb-1">Existencia en Almacén:</span>
+                        <p class="font-bold text-gray-800 text-xs" id="sal-disp-detalle">---</p>
                     </div>
                 </div>
 
-                <div id="sal-preview-personal" class="hidden preview-card space-y-1 text-xs">
-                    <p><b>Receptor:</b> <span id="sal-pv-nombre" class="uppercase text-gray-800">---</span></p>
+                <!-- TIPO DE DESPACHO PARA FRACCIONABLES -->
+                <div id="sal-bloque-tipo-despacho" class="hidden p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                    <label class="block text-[10px] font-bold text-gray-700 uppercase">Modalidad de Salida:</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center p-2 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-amber-50/50">
+                            <input type="radio" name="sal-tipo-modo" id="sal-modo-det" value="FRACCION_DET" checked class="text-amber-600 focus:ring-amber-500 mr-2">
+                            <span class="font-bold text-amber-900">Por Determinaciones</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg border border-gray-200 bg-white cursor-pointer hover:bg-amber-50/50">
+                            <input type="radio" name="sal-tipo-modo" id="sal-modo-entero" value="EMPAQUE_COMPLETO" class="text-amber-600 focus:ring-amber-500 mr-2">
+                            <span class="font-bold text-gray-800" id="sal-label-empaque-entero">Empaque Cerrado</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1" id="sal-lbl-cantidad">Cantidad a Despachar:</label>
+                    <input type="number" id="sal-cantidad" min="1" value="1" class="w-full px-3 py-2 border-2 border-amber-400 bg-amber-50/20 rounded-lg text-sm font-mono font-bold text-amber-900 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <!-- AUTOCOMPLETE PERSONAL -->
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Personal Receptor (DNI, Nombre o Alias):</label>
+                    <div class="relative">
+                        <input type="text" id="sal-buscar-personal" autocomplete="off" placeholder="Use las flechas del teclado para seleccionar..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        <div id="sal-sugerencias-personal" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto hidden"></div>
+                    </div>
+                </div>
+
+                <div id="sal-preview-personal" class="hidden p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-1 text-xs">
+                    <p><b>Receptor:</b> <span id="sal-pv-nombre" class="uppercase text-gray-900 font-bold">---</span></p>
                     <p><b>DNI:</b> <span id="sal-pv-dni" class="font-mono text-gray-700">---</span></p>
                     <p><b>Área:</b> <span id="sal-pv-area" class="text-gray-700">---</span> | <b>Cargo:</b> <span id="sal-pv-cargo" class="text-gray-700">---</span></p>
                 </div>
@@ -208,20 +233,15 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad Despachada:</label>
-                    <input type="number" id="edit-sal-cantidad" min="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-bold text-amber-700 focus:outline-none focus:border-amber-500">
-                </div>
-
-                <div>
                     <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Personal Receptor (DNI, Nombre o Alias):</label>
                     <div class="relative">
-                        <input type="text" id="edit-sal-buscar-personal" placeholder="Buscar personal..." class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
-                        <div id="edit-sal-sugerencias-personal" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto hidden"></div>
+                        <input type="text" id="edit-sal-buscar-personal" autocomplete="off" placeholder="Buscar personal..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                        <div id="edit-sal-sugerencias-personal" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-40 overflow-y-auto hidden"></div>
                     </div>
                 </div>
 
-                <div id="edit-sal-preview-personal" class="preview-card space-y-1 text-xs">
-                    <p><b>Receptor:</b> <span id="edit-sal-pv-nombre" class="uppercase text-gray-800">---</span></p>
+                <div id="edit-sal-preview-personal" class="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-1 text-xs">
+                    <p><b>Receptor:</b> <span id="edit-sal-pv-nombre" class="uppercase text-gray-800 font-bold">---</span></p>
                     <p><b>DNI:</b> <span id="edit-sal-pv-dni" class="font-mono text-gray-700">---</span></p>
                     <p><b>Área:</b> <span id="edit-sal-pv-area" class="text-gray-700">---</span> | <b>Cargo:</b> <span id="edit-sal-pv-cargo" class="text-gray-700">---</span></p>
                 </div>
@@ -250,18 +270,20 @@
             <div class="p-6 space-y-3">
                 <div>
                     <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Seleccionar Insumo del Catálogo:</label>
-                    <select id="ing-insumo-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-amber-500 bg-white">
-                        <option value="">Cargando catálogo...</option>
-                    </select>
+                    <div class="relative">
+                        <input type="text" id="ing-buscar-insumo" autocomplete="off" placeholder="Escriba código o descripción..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-bold focus:outline-none focus:border-amber-500">
+                        <input type="hidden" id="ing-insumo-id">
+                        <div id="ing-sugerencias-insumo" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto hidden"></div>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Número de Lote:</label>
-                        <input type="text" id="ing-lote" placeholder="Ej. L-2026A" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500 uppercase">
+                        <input type="text" id="ing-lote" placeholder="Ej. L-2026A" class="w-full px-3 py-1.5 border-2 border-amber-400 bg-white rounded-lg text-xs font-mono font-bold text-amber-900 focus:outline-none focus:border-amber-500 uppercase">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad que Ingresa:</label>
+                        <label class="block text-[11px] font-bold text-gray-700 uppercase mb-1">Cantidad Empaques:</label>
                         <input type="number" id="ing-cantidad" min="1" value="1" class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-green-700 focus:outline-none focus:border-amber-500">
                     </div>
                 </div>
@@ -283,6 +305,53 @@
                 <button id="btn-guardar-ingreso" class="px-5 py-2 rounded-lg text-xs font-bold bg-green-700 hover:bg-green-800 text-white flex items-center shadow">
                     <i class="fa-solid fa-floppy-disk mr-1.5"></i><span>Registrar Ingreso</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONSULTA DE SALIDA (OJITO) -->
+    <div id="modal-detalle-salida" class="modal-overlay">
+        <div class="modal-dialog max-w-md">
+            <div class="modal-header-lucuma">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-eye text-amber-400 mr-2 text-base"></i>
+                    <h3 class="text-sm font-bold tracking-wide">Comprobante de Despacho</h3>
+                </div>
+                <button id="btn-cerrar-det-salida" class="text-gray-400 hover:text-white p-1 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-6 space-y-4 text-xs">
+                <div>
+                    <span id="dt-sal-codigo" class="px-2 py-0.5 rounded bg-gray-100 font-mono font-bold text-gray-700 text-xs">---</span>
+                    <h2 id="dt-sal-descripcion" class="text-base font-black text-gray-900 mt-1 uppercase">---</h2>
+                </div>
+
+                <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-gray-500 uppercase">Cantidad Despachada:</span>
+                        <span id="dt-sal-cantidad" class="text-base font-black font-mono text-amber-700">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-gray-500 uppercase">Modalidad:</span>
+                        <span id="dt-sal-modalidad" class="font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded text-[10px]">---</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-gray-500 uppercase">Fecha y Hora:</span>
+                        <span id="dt-sal-fecha" class="font-mono font-bold text-gray-800">---</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1.5">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Personal Receptor:</span>
+                    <p><b>Nombre:</b> <span id="dt-sal-receptor" class="uppercase font-bold text-gray-800">---</span></p>
+                    <p><b>DNI:</b> <span id="dt-sal-dni" class="font-mono text-gray-700">---</span></p>
+                    <p><b>Área:</b> <span id="dt-sal-area" class="text-gray-700">---</span> | <b>Cargo:</b> <span id="dt-sal-cargo" class="text-gray-700">---</span></p>
+                    <p class="pt-1 border-t border-gray-200 text-gray-500 text-[10px]"><b>Entregado por:</b> <span id="dt-sal-usuario" class="font-mono uppercase font-bold text-amber-800">---</span></p>
+                </div>
+            </div>
+
+            <div class="p-3 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button id="btn-cerrar-det-salida-pie" class="btn-dark px-4 py-1.5 rounded-lg text-xs font-semibold">Cerrar</button>
             </div>
         </div>
     </div>

@@ -25,6 +25,33 @@ CREATE TABLE IF NOT EXISTS public.lab_insumos (
     creado_en TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE public.lab_insumos 
+ADD COLUMN IF NOT EXISTS presentacion VARCHAR(50) DEFAULT 'UNIDAD',
+ADD COLUMN IF NOT EXISTS es_fraccionable BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS determinaciones_por_empaque INT DEFAULT 1;
+
+UPDATE public.lab_insumos 
+SET determinaciones_por_empaque = 1 
+WHERE determinaciones_por_empaque IS NULL OR determinaciones_por_empaque <= 0;
+
+UPDATE public.lab_insumos 
+SET es_fraccionable = FALSE 
+WHERE es_fraccionable IS NULL;
+
+UPDATE public.lab_insumos 
+SET presentacion = 'UNIDAD' 
+WHERE presentacion IS NULL;
+
+-- 1. En lab_lotes: agregamos los contadores explícitos
+ALTER TABLE public.lab_lotes 
+ADD COLUMN IF NOT EXISTS empaques_enteros INT DEFAULT 0,
+ADD COLUMN IF NOT EXISTS determinaciones_abiertas INT DEFAULT 0;
+
+-- 2. En lab_movimientos: guardamos exactamente la naturaleza del despacho
+ALTER TABLE public.lab_movimientos 
+ADD COLUMN IF NOT EXISTS tipo_despacho VARCHAR(20) DEFAULT 'UNIDAD', -- 'EMPAQUE_COMPLETO' o 'FRACCION_DET'
+ADD COLUMN IF NOT EXISTS determinaciones_movidas INT DEFAULT 0;
+
 -- 3. Tabla de Lotes y Vencimientos
 CREATE TABLE IF NOT EXISTS public.lab_lotes (
     id SERIAL PRIMARY KEY,

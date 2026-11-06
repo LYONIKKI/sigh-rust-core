@@ -59,6 +59,12 @@ use controllers::dashboard_telesalud_controller::{
     rastrear_fua_especifico,
 };
 
+use controllers::reportes_lab_controller::{
+    obtener_kardex_insumo,
+    reporte_consumo_por_area,
+    reporte_inventario_valorizado,
+};
+
 use config::init_databases;
 use middlewares::{verificar_rol_admin, verificar_rol_lab, verificar_rol_telesalud};
 #[tokio::main]
@@ -114,6 +120,12 @@ async fn main() {
         .route("/{id}", delete(eliminar_personal))
         .route_layer(middleware::from_fn(verificar_rol_lab));
 
+    let rutas_reportes = Router::new()
+        .route("/kardex", get(obtener_kardex_insumo))
+        .route("/consumo-area", get(reporte_consumo_por_area))
+        .route("/valorizado", get(reporte_inventario_valorizado))
+        .route_layer(middleware::from_fn(verificar_rol_lab));
+
     let app = Router::new()
         .route("/api/system/creditos", get(obtener_creditos_sistema))
         .nest("/api/telesalud", rutas_telesalud)
@@ -121,6 +133,7 @@ async fn main() {
         .nest("/api/lab/inventario", rutas_inventario)
         .nest("/api/lab/movimientos", rutas_movimientos)
         .nest("/api/lab/personal", rutas_personal) // <-- Módulo Personal
+        .nest("/api/lab/reportes", rutas_reportes)
         .layer(cors)
         .with_state(state);
 

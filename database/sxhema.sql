@@ -119,3 +119,42 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_sigh_estado ON usuarios_sigh(estado);
 INSERT INTO usuarios_sigh (usuario, password, nombre, rol, estado, slug_destino)
 VALUES ('admin', '$2y$10$YourHashedPasswordHere', 'ADMINISTRADOR SISTEMA', 'admin', 1, 'laboratorio')
 ON CONFLICT (usuario) DO NOTHING;
+
+UPDATE public.lab_lotes l
+SET empaques_enteros = l.stock_actual,
+    determinaciones_abiertas = 0
+FROM public.lab_insumos i
+WHERE l.insumo_id = i.id
+  AND i.es_fraccionable = FALSE
+  AND l.stock_actual > 0
+  AND COALESCE(l.empaques_enteros, 0) = 0;
+
+  -- 2. Corregir lotes de insumos FRACCIONABLES ingresados por inventario (donde stock_actual guardó determinaciones totales)
+UPDATE public.lab_lotes l
+SET empaques_enteros = FLOOR(l.stock_actual / GREATEST(i.determinaciones_por_empaque, 1)),
+    determinaciones_abiertas = MOD(l.stock_actual, GREATEST(i.determinaciones_por_empaque, 1)),
+    stock_actual = CEIL(l.stock_actual::NUMERIC / GREATEST(i.determinaciones_por_empaque, 1))
+FROM public.lab_insumos i
+WHERE l.insumo_id = i.id
+  AND i.es_fraccionable = TRUE
+  AND l.stock_actual > 0
+  AND COALESCE(l.empaques_enteros, 0) = 0
+  AND COALESCE(l.determinaciones_abiertas, 0) = 0;
+
+-- 3. Trigger de respaldo para mantener sincronizado stock_actual con empaques_enteros
+CREATE OR REPLACE FUNCTION public.fn_sync_lote_empaques()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF COALESCE(NEW.empaques_enteros, 0) = 0 AND COALESCE(NEW.determinaciones_abiertas, 0) = 0 AND NEW.stock_actual > 0 THEN
+            NEW.empaques_enteros := NEW.stock_actual;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_lote_empaques ON public.lab_lotes;
+CREATE TRIGGER trg_sync_lote_empaques
+BEFORE INSERT ON public.lab_lotes
+FOR EACH ROW EXECUTE FUNCTION public.fn_sync_lote_empaques();

@@ -55,7 +55,7 @@ pub async fn listar_inventario(State(state): State<AppState>) -> Response {
     }
 }
 
-/// 2. POST: Registrar insumo maestro con lote manual y stock por determinaciones
+/// 2. POST: Registrar insumo maestro con lote manual y stock sincronizado
 pub async fn registrar_insumo(
     State(state): State<AppState>,
     Json(payload): Json<CrearInsumoRequest>,
@@ -71,13 +71,11 @@ pub async fn registrar_insumo(
     let stock_minimo = payload.stock_minimo.unwrap_or(2);
     let f_ingreso = payload.fecha_ingreso.trim();
 
-    // Lote manual ingresado por el usuario
     let lote_manual = payload.numero_lote
         .map(|l| l.trim().to_uppercase())
         .filter(|l| !l.is_empty())
         .unwrap_or_else(|| "LOTE-INICIAL".to_string());
 
-    // 1. Validación de coherencia de fechas en backend
     if let Some(ref f_venc) = payload.fecha_vencimiento {
         let f_venc_limpia = f_venc.trim();
         if !f_venc_limpia.is_empty() && f_ingreso > f_venc_limpia {
@@ -109,7 +107,6 @@ pub async fn registrar_insumo(
         }
     };
 
-    // 2. Inserción del Insumo Maestro con los nuevos atributos
     let insumo_id = match sqlx::query_scalar::<_, i32>(
         "INSERT INTO public.lab_insumos 
          (codigo, descripcion, presentacion, es_fraccionable, determinaciones_por_empaque, 
@@ -139,23 +136,17 @@ pub async fn registrar_insumo(
         }
     };
 
-    // 3. Si hay stock inicial, calcular determinaciones e insertar lote manual y kárdex
     if stock_empaques > 0 {
-        let stock_calculado = if es_fraccionable {
-            stock_empaques * det_por_empaque
-        } else {
-            stock_empaques
-        };
-
         let lote_id = match sqlx::query_scalar::<_, i32>(
-            "INSERT INTO public.lab_lotes (insumo_id, numero_lote, fecha_ingreso, fecha_vencimiento, stock_actual) 
-             VALUES ($1, $2, $3::DATE, NULLIF($4, '')::DATE, $5) RETURNING id;"
+            "INSERT INTO public.lab_lotes 
+             (insumo_id, numero_lote, fecha_ingreso, fecha_vencimiento, stock_actual, empaques_enteros, determinaciones_abiertas) 
+             VALUES ($1, $2, $3::DATE, NULLIF($4, '')::DATE, $5, $5, 0) RETURNING id;"
         )
         .bind(insumo_id)
         .bind(&lote_manual)
         .bind(f_ingreso)
         .bind(&payload.fecha_vencimiento)
-        .bind(stock_calculado)
+        .bind(stock_empaques)
         .fetch_one(&mut *tx)
         .await {
             Ok(id) => id,
@@ -171,12 +162,12 @@ pub async fn registrar_insumo(
 
         let res_mov = sqlx::query(
             "INSERT INTO public.lab_movimientos 
-             (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, usuario_registro) 
-             VALUES ($1, $2, 'INGRESO', $3, 0, $3, $4);"
+             (insumo_id, lote_id, tipo, cantidad, stock_anterior, stock_posterior, usuario_registro, tipo_despacho, determinaciones_movidas) 
+             VALUES ($1, $2, 'INGRESO', $3, 0, $3, $4, 'EMPAQUE_COMPLETO', 0);"
         )
         .bind(insumo_id)
         .bind(lote_id)
-        .bind(stock_calculado)
+        .bind(stock_empaques)
         .bind(&usuario_firmante)
         .execute(&mut *tx)
         .await;
@@ -208,7 +199,7 @@ pub async fn registrar_insumo(
     ).into_response()
 }
 
-/// 3. PUT: Actualizar datos de un insumo existente (incluye presentación y determinaciones)
+/// 3. PUT: Actualizar datos de un insumo existente
 pub async fn actualizar_insumo(
     State(state): State<AppState>,
     Path(id): Path<i32>,
@@ -233,7 +224,6 @@ pub async fn actualizar_insumo(
         }
     };
 
-    // 1. Actualizar Ficha Maestra del Insumo
     let query_insumo = "
         UPDATE public.lab_insumos 
         SET descripcion = $1, presentacion = $2, es_fraccionable = $3, 
@@ -267,7 +257,6 @@ pub async fn actualizar_insumo(
         }
     };
 
-    // 2. Rectificar Lote Activo (Lote manual, Fecha de Ingreso y Caducidad)
     if let Some(ref lote) = payload.numero_lote {
         let lote_limpio = lote.trim().to_uppercase();
         if !lote_limpio.is_empty() {
@@ -314,6 +303,7 @@ pub async fn actualizar_insumo(
         Json(json!({"status": "success", "message": "Insumo y lote actualizados exitosamente."})),
     ).into_response()
 }
+
 /// 4. DELETE: Borrado total en cascada atómica
 pub async fn eliminar_insumo(
     State(state): State<AppState>,

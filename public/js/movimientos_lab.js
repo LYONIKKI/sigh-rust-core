@@ -651,6 +651,10 @@ window.abrirEditarSalida = function(id) {
 
     document.getElementById("edit-sal-id").value = item.id;
     document.getElementById("edit-sal-insumo-desc").innerText = `${item.insumo_codigo} - ${item.insumo_descripcion}`;
+    document.getElementById("edit-sal-lbl-cantidad").innerText = item.tipo_despacho === "FRACCION_DET"
+        ? "Determinaciones Despachadas:"
+        : "Cantidad Despachada:";
+    document.getElementById("edit-sal-cantidad").value = item.cantidad;
     document.getElementById("edit-sal-buscar-personal").value = item.personal_nombre;
 
     editPersonalSeleccionado = {
@@ -670,9 +674,10 @@ window.abrirEditarSalida = function(id) {
 
 async function guardarEdicionSalida() {
     const id = document.getElementById("edit-sal-id").value;
+    const cantidad_nueva = parseInt(document.getElementById("edit-sal-cantidad").value, 10);
 
-    if (!editPersonalSeleccionado) {
-        Swal.fire({ icon: "warning", title: "Atención", text: "Seleccione el personal receptor.", confirmButtonColor: "#d97706" });
+    if (!cantidad_nueva || cantidad_nueva <= 0 || !editPersonalSeleccionado) {
+        Swal.fire({ icon: "warning", title: "Datos Inválidos", text: "Verifique la cantidad y el personal receptor.", confirmButtonColor: "#d97706" });
         return;
     }
 
@@ -681,7 +686,7 @@ async function guardarEdicionSalida() {
             method: "PUT",
             headers: getHeaders(),
             body: JSON.stringify({
-                cantidad_nueva: 1,
+                cantidad_nueva,
                 personal_dni: editPersonalSeleccionado.dni,
                 personal_nombre: editPersonalSeleccionado.nombres,
                 personal_area: editPersonalSeleccionado.area,
@@ -694,12 +699,13 @@ async function guardarEdicionSalida() {
         if (res.ok) {
             modalEditarSalida.classList.remove("active");
             Swal.fire({ icon: "success", title: "Actualizado", text: json.message, timer: 1800, showConfirmButton: false });
+            await cargarCatalogoInsumos();
             cargarBandeja();
         } else {
             Swal.fire({ icon: "error", title: "Error", text: json.message, confirmButtonColor: "#d97706" });
         }
     } catch (_) {
-        Swal.fire({ icon: "error", title: "Error de Red", text: "No se pudo actualizar.", confirmButtonColor: "#d97706" });
+        Swal.fire({ icon: "error", title: "Error de Red", text: "No se pudo actualizar la salida.", confirmButtonColor: "#d97706" });
     }
 }
 

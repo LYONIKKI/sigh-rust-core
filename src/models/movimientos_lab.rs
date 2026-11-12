@@ -89,7 +89,6 @@ pub struct InsumoSelectorRecord {
 /// Request para editar datos o rectificar una salida
 #[derive(Deserialize, Debug)]
 pub struct EditarSalidaRequest {
-    #[allow(dead_code)]
     pub cantidad_nueva: i32,
     pub personal_dni: String,
     pub personal_nombre: String,
